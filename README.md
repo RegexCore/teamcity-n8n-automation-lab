@@ -681,7 +681,7 @@ Fix:
 2. Verify the MCP Server plugin is active.
 3. Run [scripts/test-teamcity-mcp.ps1](scripts/test-teamcity-mcp.ps1) again.
 
-### 16.3 405 on `/app/mcp`
+### 17.3 405 on `/app/mcp`
 
 Meaning:
 
@@ -690,7 +690,16 @@ Meaning:
 
 In this repository, a `405` on `/app/mcp` is generally treated as evidence that the endpoint exists.
 
-### 16.4 PowerShell execution policy blocks scripts
+### 17.4 PowerShell execution policy blocks scripts
+
+Typical error on Windows:
+
+- `File <path> cannot be loaded because running scripts is disabled on this system.`
+- `... because script execution is disabled on this system.`
+
+Meaning:
+
+- PowerShell execution policy is preventing local script execution
 
 Run once per session:
 
@@ -698,7 +707,9 @@ Run once per session:
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
 ```
 
-### 16.5 TeamCity not reachable
+Then run the script again in the same terminal.
+
+### 17.5 TeamCity not reachable
 
 Check:
 
@@ -712,7 +723,7 @@ Common fix:
 - change `TEAMCITY_HTTP_PORT` in [.env](.env)
 - restart Docker Compose
 
-### 16.6 Queue stays empty or stuck
+### 17.6 Queue stays empty or stuck
 
 Check:
 
