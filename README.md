@@ -52,9 +52,9 @@ Do not treat the included scripts, Docker setup, or generated reports as product
 - [scripts/create-teamcity-project-rest-api.ps1](scripts/create-teamcity-project-rest-api.ps1): creates sample TeamCity data directly via the TeamCity REST API
 - [scripts/list-teamcity-data-rest-api.ps1](scripts/list-teamcity-data-rest-api.ps1): lists projects, build configurations, and queue entries directly via the TeamCity REST API
 - [scripts/query-teamcity-builds-rest-api.ps1](scripts/query-teamcity-builds-rest-api.ps1): queries builds, logs, tests, artifacts, and agents directly via the TeamCity REST API
-- [scripts/query-teamcity-builds-mcp.ps1](scripts/query-teamcity-builds-mcp.ps1): queries MCP tools and MCP build-related data via TeamCity MCP JSON-RPC
-- [scripts/test-teamcity-mcp-endpoint-direct-api.ps1](scripts/test-teamcity-mcp-endpoint-direct-api.ps1): direct HTTP smoke test for MCP endpoint availability
-- [scripts/test-teamcity-rest-api-and-mcp-json-rpc.ps1](scripts/test-teamcity-rest-api-and-mcp-json-rpc.ps1): combined REST inventory and MCP JSON-RPC diagnostics with report generation
+- [scripts/query-teamcity-builds-mcp.ps1](scripts/query-teamcity-builds-mcp.ps1): MCP-only query flow (JSON-RPC over `/app/mcp`)
+- [scripts/test-teamcity-mcp-endpoint-direct-api.ps1](scripts/test-teamcity-mcp-endpoint-direct-api.ps1): MCP-only handshake smoke test (`initialize -> initialized -> tools/list`)
+- [scripts/test-teamcity-rest-api-and-mcp-json-rpc.ps1](scripts/test-teamcity-rest-api-and-mcp-json-rpc.ps1): MCP-only by default, optional mixed mode with direct API checks
 - [LICENSE](LICENSE): repository license
 
 ## 3. Architecture
@@ -256,6 +256,19 @@ You only need to authorize again after running `docker compose down -v` (full vo
 
 ## 9. Scripts
 
+### 9.0 Quick Test Matrix (MCP vs Direct API)
+
+- MCP-only tests (no direct REST endpoint checks from client):
+  - `pwsh ./scripts/query-teamcity-builds-mcp.ps1`
+  - `pwsh ./scripts/test-teamcity-mcp-endpoint-direct-api.ps1`
+  - `pwsh ./scripts/test-teamcity-rest-api-and-mcp-json-rpc.ps1` (default mode)
+- Direct API tests (client calls `/app/rest/...` directly):
+  - `pwsh ./scripts/list-teamcity-data-rest-api.ps1`
+  - `pwsh ./scripts/query-teamcity-builds-rest-api.ps1`
+  - `pwsh ./scripts/create-teamcity-project-rest-api.ps1`
+- Mixed mode (both direct API checks and MCP in one run):
+  - `pwsh ./scripts/test-teamcity-rest-api-and-mcp-json-rpc.ps1 -IncludeDirectApiChecks`
+
 If PowerShell blocks script execution, allow it for the current session:
 
 ```powershell
@@ -345,9 +358,9 @@ pwsh ./scripts/test-teamcity-mcp-endpoint-direct-api.ps1
 
 What it does:
 
-- checks the TeamCity plugin list through REST
-- looks for MCP-related plugin data
-- probes a few MCP-related endpoint paths
+- runs MCP JSON-RPC only against `/app/mcp`
+- executes `initialize`, then `notifications/initialized`, then `tools/list`
+- verifies MCP session handling without direct `/app/rest/...` client calls
 
 What the result means:
 
@@ -356,7 +369,7 @@ What the result means:
 - `405` on `/app/mcp`: the endpoint exists, but the probe used a method the endpoint does not accept for that request
 - `404` on `/app/mcp/sse` or `/mcp`: those tested paths are not available in this setup
 
-This is the quick direct-API smoke test for MCP endpoint visibility.
+This is the quick MCP-only handshake smoke test.
 
 ### 9.4 test-teamcity-rest-api-and-mcp-json-rpc.ps1
 
@@ -370,14 +383,21 @@ pwsh ./scripts/test-teamcity-rest-api-and-mcp-json-rpc.ps1
 
 Default behavior:
 
-- performs REST inventory checks
-- performs MCP endpoint checks
+- runs in MCP-only mode by default
+- skips direct REST inventory and endpoint checks
+- runs JSON-RPC probes (`initialize`, `notifications/initialized`, `tools/list`)
 - enables raw body capture automatically if no explicit output mode is selected
 - writes two reports by default:
   - an advanced analysis report
   - a raw request/response report
 
-Optional JSON-RPC probe mode:
+Enable mixed mode (direct API + MCP):
+
+```powershell
+pwsh ./scripts/test-teamcity-rest-api-and-mcp-json-rpc.ps1 -IncludeDirectApiChecks
+```
+
+Optional JSON-RPC probe mode (mainly relevant for mixed mode):
 
 ```powershell
 pwsh ./scripts/test-teamcity-rest-api-and-mcp-json-rpc.ps1 -JsonRpcProbes
@@ -389,7 +409,7 @@ Optional NDJSON trace mode:
 pwsh ./scripts/test-teamcity-rest-api-and-mcp-json-rpc.ps1 -JsonRpcProbes -NdjsonTrace
 ```
 
-Skip REST inventory and test only MCP endpoints:
+Legacy option (still available): skip REST inventory in mixed mode:
 
 ```powershell
 pwsh ./scripts/test-teamcity-rest-api-and-mcp-json-rpc.ps1 -SkipRestInventory
@@ -407,7 +427,13 @@ Recommended default:
 - `reports/` is ignored by Git
 - the scripts create the folder automatically if it does not exist
 
-What it checks:
+What it checks in default MCP-only mode:
+
+- `POST /app/mcp` with `initialize`
+- `POST /app/mcp` with `notifications/initialized`
+- `POST /app/mcp` with `tools/list`
+
+What it checks in mixed mode (`-IncludeDirectApiChecks`):
 
 - `GET /app/rest/projects`
 - `GET /app/rest/buildTypes`

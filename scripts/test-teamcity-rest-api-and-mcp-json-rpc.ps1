@@ -1,6 +1,8 @@
 param(
     [string]$BaseUrl = "",
     [string]$Token = $env:TEAMCITY_TOKEN,
+    [switch]$McpOnly = $true,
+    [switch]$IncludeDirectApiChecks,
     [switch]$SkipRestInventory,
     [switch]$JsonRpcProbes,
     [switch]$RawBodies,
@@ -157,6 +159,75 @@ function Get-RequestHeadersSnapshot {
     return $snapshot
 }
 
+function ConvertTo-ReadableRpcMessage {
+    param([string]$Body)
+
+    if ([string]::IsNullOrWhiteSpace($Body)) {
+        return $null
+    }
+
+    try {
+        return $Body | ConvertFrom-Json
+    }
+    catch {
+        return $null
+    }
+}
+
+function Get-RegexMatchValue {
+    param(
+        [string]$Text,
+        [string]$Pattern
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return $null
+    }
+
+    $match = [regex]::Match($Text, $Pattern, [System.Text.RegularExpressions.RegexOptions]::Singleline)
+    if ($match.Success -and $match.Groups.Count -gt 1) {
+        return $match.Groups[1].Value
+    }
+
+    return $null
+}
+
+function Add-RpcReadabilityFields {
+    param([pscustomobject]$Entry)
+
+    $requestJson = ConvertTo-ReadableRpcMessage -Body $Entry.rawRequestBody
+    $responseJson = ConvertTo-ReadableRpcMessage -Body $Entry.rawResponseBody
+
+    $rpcMethod = if ($requestJson -and $requestJson.PSObject.Properties.Name -contains 'method') { [string]$requestJson.method } else { Get-RegexMatchValue -Text $Entry.rawRequestBody -Pattern '"method"\s*:\s*"([^"]+)"' }
+    $rpcId = if ($requestJson -and $requestJson.PSObject.Properties.Name -contains 'id') { [string]$requestJson.id } else { Get-RegexMatchValue -Text $Entry.rawRequestBody -Pattern '"id"\s*:\s*"?([^"\r\n,}]+)"?' }
+    $toolName = if ($requestJson -and $requestJson.PSObject.Properties.Name -contains 'params' -and $requestJson.params.PSObject.Properties.Name -contains 'name') { [string]$requestJson.params.name } else { Get-RegexMatchValue -Text $Entry.rawRequestBody -Pattern '"name"\s*:\s*"([^"]+)"' }
+
+    $Entry | Add-Member -NotePropertyName rpcMethod -NotePropertyValue $rpcMethod -Force
+    $Entry | Add-Member -NotePropertyName rpcId -NotePropertyValue $rpcId -Force
+    $Entry | Add-Member -NotePropertyName toolName -NotePropertyValue $toolName -Force
+    $Entry | Add-Member -NotePropertyName arguments -NotePropertyValue $(if ($requestJson -and $requestJson.PSObject.Properties.Name -contains 'params' -and $requestJson.params.PSObject.Properties.Name -contains 'arguments') { $requestJson.params.arguments } else { $null }) -Force
+    $Entry | Add-Member -NotePropertyName rawRequestBody -NotePropertyValue $Entry.rawRequestBody -Force
+    $Entry | Add-Member -NotePropertyName rawResponseBody -NotePropertyValue $Entry.rawResponseBody -Force
+    $Entry | Add-Member -NotePropertyName parsedRequest -NotePropertyValue $(if ($requestJson) { $requestJson } else { [pscustomobject]@{ method = $rpcMethod; id = $rpcId; toolName = $toolName; arguments = $Entry.arguments } }) -Force
+    $Entry | Add-Member -NotePropertyName parsedResponse -NotePropertyValue $(if ($responseJson) { $responseJson } else { [pscustomobject]@{ hasResult = [bool]($Entry.rawResponseBody -match '"result"\s*:'); hasError = [bool]($Entry.rawResponseBody -match '"error"\s*:'); raw = $Entry.rawResponseBody } }) -Force
+    $Entry | Add-Member -NotePropertyName parsedResponseResult -NotePropertyValue $(if ($responseJson -and $responseJson.PSObject.Properties.Name -contains 'result') { $responseJson.result } else { $(if ($Entry.rawResponseBody -match '"result"\s*:') { [pscustomobject]@{ raw = $Entry.rawResponseBody } } else { $null }) }) -Force
+    $Entry | Add-Member -NotePropertyName parsedResponseError -NotePropertyValue $(if ($responseJson -and $responseJson.PSObject.Properties.Name -contains 'error') { $responseJson.error } else { $(if ($Entry.rawResponseBody -match '"error"\s*:') { [pscustomobject]@{ raw = $Entry.rawResponseBody } } else { $null }) }) -Force
+
+    if ($rpcMethod -eq 'tools/list' -and $responseJson -and $responseJson.PSObject.Properties.Name -contains 'result' -and $responseJson.result.PSObject.Properties.Name -contains 'tools') {
+        $Entry | Add-Member -NotePropertyName discoveredTools -NotePropertyValue @(
+            $responseJson.result.tools | ForEach-Object {
+                [ordered]@{
+                    name = [string]$_.name
+                    description = [string]$_.description
+                    inputSchema = $_.inputSchema
+                }
+            }
+        ) -Force
+    }
+
+    return $Entry
+}
+
 function Invoke-Endpoint {
     param(
         [string]$Method,
@@ -188,16 +259,25 @@ function Invoke-Endpoint {
             method = $Method
             url = $Url
             requestHeaders = $safeHeaders
-            requestBody = $requestBody
+            rawRequestBody = $requestBody
             status = [int]$response.StatusCode
             statusText = [string]$response.StatusDescription
             contentType = [string]$response.Headers["Content-Type"]
             allow = [string]$response.Headers["Allow"]
             responseHeaders = $respHeaders
+            sessionId = [string]$response.Headers['Mcp-Session-Id']
             bodyLength = if ($response.Content) { [int]$response.Content.Length } else { 0 }
             bodySnippet = if ($response.Content) { [string]$response.Content } else { "" }
+            rawResponseBody = if ($response.Content) { [string]$response.Content } else { "" }
             bodyRaw = if ($RawBodies -and $response.Content) { [string]$response.Content } else { "" }
-            responseBodyRaw = if ($response.Content) { [string]$response.Content } else { "" }
+            rpcMethod = ""
+            rpcId = ""
+            toolName = ""
+            arguments = $null
+            parsedRequest = $null
+            parsedResponse = $null
+            parsedResponseResult = $null
+            parsedResponseError = $null
             ok = $true
             error = ""
         }
@@ -249,16 +329,25 @@ function Invoke-Endpoint {
             method = $Method
             url = $Url
             requestHeaders = $safeHeaders
-            requestBody = $requestBody
+            rawRequestBody = $requestBody
             status = $status
             statusText = $statusText
             contentType = $contentType
             allow = $allow
             responseHeaders = $respHeaders
+            sessionId = [string]$resp.Headers['Mcp-Session-Id']
             bodyLength = if ($bodySnippet) { [int]$bodySnippet.Length } else { 0 }
             bodySnippet = $bodySnippet
+            rawResponseBody = $bodySnippet
             bodyRaw = if ($RawBodies) { $bodySnippet } else { "" }
-            responseBodyRaw = $bodySnippet
+            rpcMethod = ""
+            rpcId = ""
+            toolName = ""
+            arguments = $null
+            parsedRequest = $null
+            parsedResponse = $null
+            parsedResponseResult = $null
+            parsedResponseError = $null
             ok = $false
             error = [string]$_.Exception.Message
         }
@@ -291,6 +380,25 @@ if (-not $RawJsonOutput -and -not $NdjsonTrace -and -not $RawBodies) {
     $RawBodies = $true
 }
 
+if ($IncludeDirectApiChecks) {
+    $McpOnly = $false
+}
+
+if ($McpOnly) {
+    # Strict MCP mode: skip direct REST inventory and ensure JSON-RPC MCP probes run.
+    $SkipRestInventory = $true
+    $JsonRpcProbes = $true
+}
+
+Write-Host ""
+if ($McpOnly) {
+    Write-Host "MODE: MCP-only (nur JSON-RPC ueber /app/mcp)"
+}
+else {
+    Write-Host "MODE: Mixed (Direct API Checks + MCP JSON-RPC)"
+}
+Write-Host ""
+
 $results = [ordered]@{}
 $results.generatedAt = (Get-Date).ToString("s")
 $results.baseUrl = $base
@@ -298,6 +406,15 @@ $results.tokenDetected = -not [string]::IsNullOrWhiteSpace($Token)
 $results.rawBodiesEnabled = [bool]$RawBodies
 $results.ndjsonTraceEnabled = [bool]$NdjsonTrace
 $results.rawJsonOutputEnabled = [bool]$RawJsonOutput
+$results.mcpOnlyMode = [bool]$McpOnly
+$results.fieldLegend = @(
+    [ordered]@{ field = "rawRequestBody"; meaning = "unveraenderter Request-Body" }
+    [ordered]@{ field = "rawResponseBody"; meaning = "unveraenderter Response-Body" }
+    [ordered]@{ field = "parsedRequest"; meaning = "lesbare JSON-Auswertung des Requests" }
+    [ordered]@{ field = "parsedResponse"; meaning = "lesbare JSON-Auswertung der Response" }
+    [ordered]@{ field = "parsedResponseResult"; meaning = "nur der result-Teil der Response, falls vorhanden" }
+    [ordered]@{ field = "parsedResponseError"; meaning = "nur der error-Teil der Response, falls vorhanden" }
+)
 $results.restInventory = @()
 $results.restSummary = @{}
 $results.mcpEndpointChecks = @()
@@ -365,25 +482,30 @@ if (-not $SkipRestInventory) {
 }
 
 Write-Host "== MCP Endpoint Checks =="
-$mcpCandidates = @(
-    "/app/mcp",
-    "/app/mcp/sse",
-    "/mcp"
-)
+if ($McpOnly) {
+    Write-Host "SKIP (McpOnly): Direkte Endpoint-Checks deaktiviert."
+}
+else {
+    $mcpCandidates = @(
+        "/app/mcp",
+        "/app/mcp/sse",
+        "/mcp"
+    )
 
-foreach ($path in $mcpCandidates) {
-    $url = "$base$path"
+    foreach ($path in $mcpCandidates) {
+        $url = "$base$path"
 
-    $getRes = Invoke-Endpoint -Method "GET" -Url $url -Headers (New-Headers -IncludeContentType:$false) -Body ""
-    $results.mcpEndpointChecks += $getRes
-    $getStatus = if ($null -ne $getRes.status) { "$($getRes.status) $($getRes.statusText)" } else { "NO_STATUS" }
-    Write-Host "GET $url -> $getStatus"
+        $getRes = Invoke-Endpoint -Method "GET" -Url $url -Headers (New-Headers -IncludeContentType:$false) -Body ""
+        $results.mcpEndpointChecks += $getRes
+        $getStatus = if ($null -ne $getRes.status) { "$($getRes.status) $($getRes.statusText)" } else { "NO_STATUS" }
+        Write-Host "GET $url -> $getStatus"
 
-    $optionsRes = Invoke-Endpoint -Method "OPTIONS" -Url $url -Headers (New-Headers -IncludeContentType:$false) -Body ""
-    $results.mcpEndpointChecks += $optionsRes
-    $optStatus = if ($null -ne $optionsRes.status) { "$($optionsRes.status) $($optionsRes.statusText)" } else { "NO_STATUS" }
-    $allowText = if (-not [string]::IsNullOrWhiteSpace($optionsRes.allow)) { " | Allow: $($optionsRes.allow)" } else { "" }
-    Write-Host "OPTIONS $url -> $optStatus$allowText"
+        $optionsRes = Invoke-Endpoint -Method "OPTIONS" -Url $url -Headers (New-Headers -IncludeContentType:$false) -Body ""
+        $results.mcpEndpointChecks += $optionsRes
+        $optStatus = if ($null -ne $optionsRes.status) { "$($optionsRes.status) $($optionsRes.statusText)" } else { "NO_STATUS" }
+        $allowText = if (-not [string]::IsNullOrWhiteSpace($optionsRes.allow)) { " | Allow: $($optionsRes.allow)" } else { "" }
+        Write-Host "OPTIONS $url -> $optStatus$allowText"
+    }
 }
 
 Write-Host ""
@@ -406,9 +528,32 @@ if ($JsonRpcProbes) {
     } | ConvertTo-Json -Depth 10
 
     $initRes = Invoke-Endpoint -Method "POST" -Url $rpcUrl -Headers (New-Headers -IncludeContentType:$true) -Body $initializePayload
+    $initRes = Add-RpcReadabilityFields -Entry $initRes
     $results.jsonRpcProbes += $initRes
     $initStatus = if ($null -ne $initRes.status) { "$($initRes.status) $($initRes.statusText)" } else { "NO_STATUS" }
     Write-Host "POST $rpcUrl (initialize) -> $initStatus"
+
+    $mcpSessionId = [string]$initRes.sessionId
+    if (-not [string]::IsNullOrWhiteSpace($mcpSessionId)) {
+        Write-Host "MCP Session: $mcpSessionId"
+    }
+
+    $mcpHeaders = New-Headers -IncludeContentType:$true
+    if (-not [string]::IsNullOrWhiteSpace($mcpSessionId)) {
+        $mcpHeaders['Mcp-Session-Id'] = $mcpSessionId
+    }
+
+    $initializedPayload = @{
+        jsonrpc = "2.0"
+        method = "notifications/initialized"
+        params = @{}
+    } | ConvertTo-Json -Depth 10
+
+    $initializedRes = Invoke-Endpoint -Method "POST" -Url $rpcUrl -Headers $mcpHeaders -Body $initializedPayload
+    $initializedRes = Add-RpcReadabilityFields -Entry $initializedRes
+    $results.jsonRpcProbes += $initializedRes
+    $initializedStatus = if ($null -ne $initializedRes.status) { "$($initializedRes.status) $($initializedRes.statusText)" } else { "NO_STATUS" }
+    Write-Host "POST $rpcUrl (notifications/initialized) -> $initializedStatus"
 
     $toolsPayload = @{
         jsonrpc = "2.0"
@@ -417,7 +562,8 @@ if ($JsonRpcProbes) {
         params = @{}
     } | ConvertTo-Json -Depth 10
 
-    $toolsRes = Invoke-Endpoint -Method "POST" -Url $rpcUrl -Headers (New-Headers -IncludeContentType:$true) -Body $toolsPayload
+    $toolsRes = Invoke-Endpoint -Method "POST" -Url $rpcUrl -Headers $mcpHeaders -Body $toolsPayload
+    $toolsRes = Add-RpcReadabilityFields -Entry $toolsRes
     $results.jsonRpcProbes += $toolsRes
     $toolsStatus = if ($null -ne $toolsRes.status) { "$($toolsRes.status) $($toolsRes.statusText)" } else { "NO_STATUS" }
     Write-Host "POST $rpcUrl (tools/list) -> $toolsStatus"
@@ -450,13 +596,13 @@ if ($RawJsonOutput) {
                 method = $entry.method
                 url = $entry.url
                 headers = $entry.requestHeaders
-                body = $entry.requestBody
+                body = $entry.rawRequestBody
             }
             response = [pscustomobject]@{
                 status = $entry.status
                 statusText = $entry.statusText
                 headers = $entry.responseHeaders
-                body = $entry.responseBodyRaw
+                body = $entry.rawResponseBody
             }
         }
     }
@@ -469,13 +615,13 @@ if ($RawJsonOutput) {
                 method = $entry.method
                 url = $entry.url
                 headers = $entry.requestHeaders
-                body = $entry.requestBody
+                body = $entry.rawRequestBody
             }
             response = [pscustomobject]@{
                 status = $entry.status
                 statusText = $entry.statusText
                 headers = $entry.responseHeaders
-                body = $entry.responseBodyRaw
+                body = $entry.rawResponseBody
             }
         }
     }
@@ -483,19 +629,28 @@ if ($RawJsonOutput) {
     foreach ($entry in $results.jsonRpcProbes) {
         $rawExchanges += [pscustomobject]@{
             category = "jsonRpcProbes"
+            rpcMethod = $entry.rpcMethod
+            rpcId = $entry.rpcId
+            toolName = $entry.toolName
+            arguments = $entry.arguments
             request = [pscustomobject]@{
                 timestamp = $entry.timestamp
                 method = $entry.method
                 url = $entry.url
                 headers = $entry.requestHeaders
-                body = $entry.requestBody
+                body = $entry.rawRequestBody
             }
             response = [pscustomobject]@{
                 status = $entry.status
                 statusText = $entry.statusText
                 headers = $entry.responseHeaders
-                body = $entry.responseBodyRaw
+                body = $entry.rawResponseBody
             }
+            parsedRequest = $entry.parsedRequest
+            parsedResponse = $entry.parsedResponse
+            parsedResponseResult = $entry.parsedResponseResult
+            parsedResponseError = $entry.parsedResponseError
+            discoveredTools = $(if ($entry.PSObject.Properties.Name -contains 'discoveredTools') { $entry.discoveredTools } else { $null })
         }
     }
 
@@ -503,6 +658,7 @@ if ($RawJsonOutput) {
         generatedAt = $results.generatedAt
         baseUrl = $results.baseUrl
         tokenDetected = $results.tokenDetected
+        fieldLegend = $results.fieldLegend
         exchanges = $rawExchanges
     }
 
@@ -548,6 +704,7 @@ if ($NdjsonTrace) {
             tokenDetected = $results.tokenDetected
             rawBodiesEnabled = $results.rawBodiesEnabled
             ndjsonTraceEnabled = $results.ndjsonTraceEnabled
+            fieldLegend = $results.fieldLegend
         }
     }
 
@@ -571,10 +728,28 @@ foreach ($r in $results.mcpEndpointChecks) {
     }
 }
 
+$rpcReachable = $false
+foreach ($r in $results.jsonRpcProbes) {
+    if ($null -ne $r.status -and $r.status -ge 200 -and $r.status -lt 300) {
+        $rpcReachable = $true
+        break
+    }
+}
+
 Write-Host ""
-if ($reachable) {
+if ($McpOnly -and $rpcReachable) {
+    Write-Host "MCP Probe (McpOnly): JSON-RPC Kommunikation erfolgreich erreichbar."
+    exit 0
+}
+
+if ((-not $McpOnly) -and $reachable) {
     Write-Host "MCP Probe: mindestens ein Endpunkt antwortet nicht mit 404."
     exit 0
+}
+
+if ($McpOnly) {
+    Write-Host "MCP Probe (McpOnly): keine erfolgreiche JSON-RPC Kommunikation festgestellt."
+    exit 1
 }
 
 Write-Host "MCP Probe: alle geprueften Endpunkte liefern 404."
