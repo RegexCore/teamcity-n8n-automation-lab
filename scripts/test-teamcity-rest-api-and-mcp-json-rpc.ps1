@@ -89,6 +89,40 @@ function Get-EnvValueFromDotEnv {
     return $null
 }
 
+function Resolve-ReportDirectory {
+    param(
+        [string]$ReportDir,
+        [string]$RepoRoot
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ReportDir)) {
+        $resolvedDir = $RepoRoot
+    }
+    elseif ([System.IO.Path]::IsPathRooted($ReportDir)) {
+        $resolvedDir = $ReportDir
+    }
+    else {
+        $resolvedDir = Join-Path $RepoRoot $ReportDir
+    }
+
+    if (-not (Test-Path -LiteralPath $resolvedDir)) {
+        New-Item -ItemType Directory -Path $resolvedDir -Force | Out-Null
+    }
+
+    return $resolvedDir
+}
+
+function Ensure-ParentDirectory {
+    param(
+        [string]$FilePath
+    )
+
+    $parentDir = Split-Path -Parent $FilePath
+    if (-not [string]::IsNullOrWhiteSpace($parentDir) -and -not (Test-Path -LiteralPath $parentDir)) {
+        New-Item -ItemType Directory -Path $parentDir -Force | Out-Null
+    }
+}
+
 function New-Headers {
     param(
         [bool]$IncludeContentType
@@ -246,9 +280,7 @@ if ([string]::IsNullOrWhiteSpace($BaseUrl)) {
 }
 
 $defaultReportDir = Get-EnvValueFromDotEnv -EnvFilePath $envFilePath -Key "TEAMCITY_REPORT_DIR"
-if ([string]::IsNullOrWhiteSpace($defaultReportDir)) {
-    $defaultReportDir = $repoRoot
-}
+$defaultReportDir = Resolve-ReportDirectory -ReportDir $defaultReportDir -RepoRoot $repoRoot
 
 $base = $BaseUrl.TrimEnd('/')
 
@@ -395,16 +427,17 @@ if ($JsonRpcProbes) {
 
 if ([string]::IsNullOrWhiteSpace($ReportPath)) {
     $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
-    $ReportPath = Join-Path $defaultReportDir "mcp-advanced-report-$stamp.json"
+    $ReportPath = Join-Path $defaultReportDir "teamcity-rest-api-and-mcp-json-rpc-report-$stamp.json"
 }
 
+Ensure-ParentDirectory -FilePath $ReportPath
 $results | ConvertTo-Json -Depth 15 | Set-Content -LiteralPath $ReportPath -Encoding UTF8
 Write-Host "Report gespeichert: $ReportPath"
 
 if ($RawJsonOutput) {
     if ([string]::IsNullOrWhiteSpace($RawJsonPath)) {
         $stampRawJson = Get-Date -Format "yyyyMMdd-HHmmss"
-        $RawJsonPath = Join-Path $defaultReportDir "mcp-server-raw-$stampRawJson.json"
+        $RawJsonPath = Join-Path $defaultReportDir "teamcity-rest-api-and-mcp-json-rpc-raw-$stampRawJson.json"
     }
 
     $rawExchanges = @()
@@ -473,6 +506,7 @@ if ($RawJsonOutput) {
         exchanges = $rawExchanges
     }
 
+    Ensure-ParentDirectory -FilePath $RawJsonPath
     $rawPayload | ConvertTo-Json -Depth 25 | Set-Content -LiteralPath $RawJsonPath -Encoding UTF8
     Write-Host "Raw JSON gespeichert: $RawJsonPath"
 }
@@ -480,7 +514,7 @@ if ($RawJsonOutput) {
 if ($NdjsonTrace) {
     if ([string]::IsNullOrWhiteSpace($NdjsonPath)) {
         $stampForNdjson = Get-Date -Format "yyyyMMdd-HHmmss"
-        $NdjsonPath = Join-Path $defaultReportDir "mcp-advanced-trace-$stampForNdjson.ndjson"
+        $NdjsonPath = Join-Path $defaultReportDir "teamcity-rest-api-and-mcp-json-rpc-trace-$stampForNdjson.ndjson"
     }
 
     $traceEntries = @()
@@ -524,6 +558,7 @@ if ($NdjsonTrace) {
 
     $allNdjsonEntries = @($meta) + $traceEntries + @($summary)
     $ndjsonLines = $allNdjsonEntries | ForEach-Object { $_ | ConvertTo-Json -Depth 20 -Compress }
+    Ensure-ParentDirectory -FilePath $NdjsonPath
     $ndjsonLines | Set-Content -LiteralPath $NdjsonPath -Encoding UTF8
     Write-Host "NDJSON Trace gespeichert: $NdjsonPath"
 }

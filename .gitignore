@@ -5,6 +5,7 @@
 # TeamCity / local runtime artifacts
 *.log
 logs/
+reports/
 
 # Optional local plugin drop-in folder (if you add one later)
 plugins/
