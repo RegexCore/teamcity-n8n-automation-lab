@@ -503,7 +503,7 @@ pwsh ./scripts/test-teamcity-mcp-all-tools.ps1
 
 What it does:
 
-- executes `initialize`, `notifications/initialized`, `tools/list`, `resources/list`, and `prompts/list`
+- executes `initialize`, `notifications/initialized`, `tools/list`, and `resources/list`
 - discovers tool definitions dynamically from `tools/list`
 - calls every discovered tool at least once
 - executes practical variants for known TeamCity tools (for example multiple `teamcity_rest_get` requests)
@@ -518,6 +518,20 @@ Raw protocol fields per MCP exchange in the report:
 Complete communication trace:
 
 - `exchanges[]` contains setup calls, meta calls, and every `tools/call` exchange in order
+
+How to read report sections quickly:
+
+- `setup`: MCP session bootstrap (`initialize`, `notifications/initialized`, `tools/list`)
+- `toolCatalog`: discovered capabilities from `tools/list` (what the server offers)
+- `toolCalls`: executed `tools/call` test cases (what the script actually ran)
+- `metaCalls`: auxiliary calls not counted as main tool test cases (for example `resources/list`)
+- `exchanges`: chronological timeline of all captured exchanges across setup, meta, and tool calls
+
+Rule of thumb:
+
+- `toolCatalog` = possible
+- `toolCalls` = executed
+- `exchanges` = full timeline
 
 Optional write-mode for `teamcity_rest_post` tools:
 

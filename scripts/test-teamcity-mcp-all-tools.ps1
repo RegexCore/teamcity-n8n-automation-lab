@@ -182,7 +182,13 @@ function ConvertFrom-JsonSafe {
         return ($Body | ConvertFrom-Json -Depth 50)
     }
     catch {
-        return $null
+        try {
+            # Windows PowerShell 5.1 does not support -Depth for ConvertFrom-Json.
+            return ($Body | ConvertFrom-Json)
+        }
+        catch {
+            return $null
+        }
     }
 }
 
@@ -376,9 +382,10 @@ $resources = Invoke-RpcMethod -Method "resources/list" -Id "3" -Params @{} -Labe
 $report.metaCalls.resourcesList = $resources.exchange
 $report.exchanges += [ordered]@{ category = "meta"; stage = "resources/list"; label = $resources.exchange.label; exchange = $resources.exchange }
 
-$prompts = Invoke-RpcMethod -Method "prompts/list" -Id "4" -Params @{} -Label "prompts/list"
-$report.metaCalls.promptsList = $prompts.exchange
-$report.exchanges += [ordered]@{ category = "meta"; stage = "prompts/list"; label = $prompts.exchange.label; exchange = $prompts.exchange }
+$report.metaCalls.promptsList = [ordered]@{
+    skipped = $true
+    reason = "removed: prompts/list is not supported by this TeamCity MCP server"
+}
 
 $resolvedBuildId = $BuildId
 if ([string]::IsNullOrWhiteSpace($resolvedBuildId) -and ($toolCatalog | Where-Object { $_.name -eq "teamcity_rest_get" } | Select-Object -First 1)) {
