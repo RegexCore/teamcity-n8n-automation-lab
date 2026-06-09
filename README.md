@@ -12,6 +12,7 @@ A local TeamCity test environment using Docker Compose, plus PowerShell scripts 
 - [6. Configuration](#6-configuration)
 - [7. First Start](#7-first-start)
 - [8. Token Setup in TeamCity](#8-token-setup-in-teamcity)
+- [8a. Agent Authorization](#8a-agent-authorization)
 - [9. Scripts](#9-scripts)
 - [10. Output Files and Reports](#10-output-files-and-reports)
 - [11. What the Raw MCP Files Actually Contain](#11-what-the-raw-mcp-files-actually-contain)
@@ -194,6 +195,50 @@ To create the token used by the scripts:
 6. Store it in [.env](.env) as `TEAMCITY_TOKEN=...`
 
 Note: the token may not be shown again in full after creation.
+
+## 8a. Agent Authorization
+
+After the first start, the TeamCity agent (`docker-agent-01`) connects to the server but is initially **Unauthorized**.
+Builds will stay in the queue and never be picked up until the agent is authorized.
+
+### Option A – Authorize manually in the UI (recommended for first setup)
+
+1. Open TeamCity in the browser: `http://localhost:8111`
+2. Go to **Agents** in the top navigation.
+3. Select the tab **Unauthorized**.
+4. Click `docker-agent-01`.
+5. Click **Authorize**.
+
+The agent moves to **Connected & Authorized** and starts picking up queued builds immediately.
+
+### Option B – Authorize via REST API (e.g. from a script or terminal)
+
+Replace `<TOKEN>` with your TeamCity token from [.env](.env):
+
+```powershell
+Invoke-RestMethod `
+  -Method Put `
+  -Uri "http://localhost:8111/app/rest/agents/name:docker-agent-01/authorized" `
+  -Headers @{ Authorization = "Bearer <TOKEN>"; "Content-Type" = "text/plain" } `
+  -Body "true"
+```
+
+Or with `curl`:
+
+```bash
+curl -s -X PUT \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Content-Type: text/plain" \
+  -d "true" \
+  http://localhost:8111/app/rest/agents/name:docker-agent-01/authorized
+```
+
+A `204 No Content` response means the agent is now authorized.
+
+### When to re-authorize
+
+Authorization is stored in the `agent_conf` Docker volume and survives container restarts.
+You only need to authorize again after running `docker compose down -v` (full volume wipe).
 
 ## 9. Scripts
 
@@ -736,3 +781,26 @@ Agent log check:
 ```powershell
 docker compose logs --tail=120 teamcity-agent
 ```
+
+### 17.7 Agent is connected but builds are never picked up
+
+Cause:
+
+- the agent is **Unauthorized** — this is the default state after the first start
+
+Fix A (UI):
+
+1. Open TeamCity → **Agents** → tab **Unauthorized**.
+2. Click `docker-agent-01` → **Authorize**.
+
+Fix B (REST API):
+
+```powershell
+Invoke-RestMethod `
+  -Method Put `
+  -Uri "http://localhost:8111/app/rest/agents/name:docker-agent-01/authorized" `
+  -Headers @{ Authorization = "Bearer <TOKEN>"; "Content-Type" = "text/plain" } `
+  -Body "true"
+```
+
+See [section 8a](#8a-agent-authorization) for the full explanation.
