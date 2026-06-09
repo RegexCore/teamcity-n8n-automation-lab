@@ -273,6 +273,102 @@ Expected output artifacts by script family:
 - REST query: `tc-builds-query-rest-api-*.json`
 - MCP handshake/all-tools/query: `teamcity-mcp-all-tools-*.json`, `tc-builds-query-mcp-*.json`
 
+### 9.b Copy-Paste API Calls (Terminal)
+
+These examples are direct API commands you can run in `pwsh` without using the helper scripts.
+
+Official TeamCity MCP documentation:
+
+- https://www.jetbrains.com/help/teamcity/2026.1/ai-agent-integration.html#TeamCity+MCP
+
+Set base variables first:
+
+```powershell
+$baseUrl = "http://localhost:8111"
+$token = "<TEAMCITY_TOKEN>"
+```
+
+Direct REST API examples:
+
+```powershell
+$headers = @{ Authorization = "Bearer $token"; Accept = "application/json" }
+
+Invoke-RestMethod -Method GET -Uri "$baseUrl/app/rest/projects" -Headers $headers
+Invoke-RestMethod -Method GET -Uri "$baseUrl/app/rest/buildTypes" -Headers $headers
+Invoke-RestMethod -Method GET -Uri "$baseUrl/app/rest/buildQueue" -Headers $headers
+Invoke-RestMethod -Method GET -Uri "$baseUrl/app/rest/builds?locator=count:5" -Headers $headers
+```
+
+MCP JSON-RPC examples (raw client-server flow):
+
+The block below includes exactly 4 MCP requests after handshake setup:
+
+- request 1: `tools/list`
+- request 2: `tools/call` for `teamcity_rest_get`
+- request 3: `tools/call` for `teamcity_build_log`
+- request 4: `tools/call` for `teamcity_rest_post`
+
+```powershell
+$mcpUrl = "$baseUrl/app/mcp"
+$mcpHeaders = @{ Authorization = "Bearer $token"; Accept = "application/json"; "Content-Type" = "application/json" }
+
+$initPayload = @{
+  jsonrpc = "2.0"
+  id = "1"
+  method = "initialize"
+  params = @{
+    protocolVersion = "2024-11-05"
+    capabilities = @{}
+    clientInfo = @{ name = "manual-mcp-client"; version = "1.0" }
+  }
+} | ConvertTo-Json -Depth 10
+
+$initRes = Invoke-WebRequest -Method POST -Uri $mcpUrl -Headers $mcpHeaders -Body $initPayload
+$sessionId = [string]$initRes.Headers['Mcp-Session-Id']
+$mcpHeaders['Mcp-Session-Id'] = $sessionId
+
+$initializedPayload = @{ jsonrpc = "2.0"; method = "notifications/initialized"; params = @{} } | ConvertTo-Json -Depth 10
+Invoke-WebRequest -Method POST -Uri $mcpUrl -Headers $mcpHeaders -Body $initializedPayload
+
+function Invoke-McpRpc {
+  param(
+    [string]$Id,
+    [string]$Method,
+    [hashtable]$Params = @{}
+  )
+
+  $payload = @{ jsonrpc = "2.0"; id = $Id; method = $Method; params = $Params } | ConvertTo-Json -Depth 20
+  Invoke-WebRequest -Method POST -Uri $mcpUrl -Headers $mcpHeaders -Body $payload
+}
+
+# 1) tools/list
+$toolsListRes = Invoke-McpRpc -Id "2" -Method "tools/list" -Params @{}
+$toolsListRes.Content
+
+# 2) tools/call -> teamcity_rest_get
+$restGetRes = Invoke-McpRpc -Id "3" -Method "tools/call" -Params @{
+  name = "teamcity_rest_get"
+  arguments = @{ path = "/app/rest/projects" }
+}
+$restGetRes.Content
+
+# 3) tools/call -> teamcity_build_log
+# Hinweis: BuildId ggf. anpassen
+$buildLogRes = Invoke-McpRpc -Id "4" -Method "tools/call" -Params @{
+  name = "teamcity_build_log"
+  arguments = @{ buildId = "1"; count = "50" }
+}
+$buildLogRes.Content
+
+# 4) tools/call -> teamcity_rest_post
+# Sichere Demo mit absichtlich ungueltiger BuildType-ID (zeigt Request/Response, startet keinen echten Build)
+$restPostRes = Invoke-McpRpc -Id "5" -Method "tools/call" -Params @{
+  name = "teamcity_rest_post"
+  arguments = @{ path = "/app/rest/buildQueue"; body = '{"buildType":{"id":"__does_not_exist__"}}' }
+}
+$restPostRes.Content
+```
+
 ### 9.0 Quick Test Matrix (MCP vs Direct API)
 
 - MCP-only tests (no direct REST endpoint checks from client):
