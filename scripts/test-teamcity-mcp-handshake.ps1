@@ -123,16 +123,16 @@ function Invoke-Mcp {
     }
 }
 
-Write-Host "== MCP JSON-RPC Probe (pure MCP) =="
+Write-Host "== MCP JSON-RPC Handshake Probe (MCP-only) =="
 
 $initRes = Invoke-Mcp -Label "initialize" -Body (New-RpcPayload -Id "1" -Method "initialize" -Params @{
     protocolVersion = "2024-11-05"
     capabilities = @{}
-    clientInfo = @{ name = "teamcity-mcp-direct-test"; version = "1.0" }
+    clientInfo = @{ name = "teamcity-mcp-handshake"; version = "1.0" }
 })
 
 if (-not $initRes.ok) {
-    Write-Host "MCP Probe fehlgeschlagen: initialize nicht erfolgreich."
+    Write-Host "MCP Handshake fehlgeschlagen: initialize nicht erfolgreich."
     exit 1
 }
 
@@ -141,21 +141,21 @@ if (-not [string]::IsNullOrWhiteSpace($initRes.sessionId)) {
     Write-Host "MCP Session: $($initRes.sessionId)"
 }
 else {
-    Write-Host "MCP Probe fehlgeschlagen: kein Mcp-Session-Id Header in initialize Antwort."
+    Write-Host "MCP Handshake fehlgeschlagen: kein Mcp-Session-Id Header in initialize Antwort."
     exit 1
 }
 
 $initializedRes = Invoke-Mcp -Label "notifications/initialized" -Body (New-RpcPayload -Id $null -Method "notifications/initialized" -Params @{})
 if (-not $initializedRes.ok) {
-    Write-Host "MCP Probe fehlgeschlagen: notifications/initialized nicht erfolgreich."
+    Write-Host "MCP Handshake fehlgeschlagen: notifications/initialized nicht erfolgreich."
     exit 1
 }
 
 $toolsRes = Invoke-Mcp -Label "tools/list" -Body (New-RpcPayload -Id "2" -Method "tools/list" -Params @{})
 if (-not $toolsRes.ok) {
-    Write-Host "MCP Probe fehlgeschlagen: tools/list nicht erfolgreich."
+    Write-Host "MCP Handshake fehlgeschlagen: tools/list nicht erfolgreich."
     exit 1
 }
 
-Write-Host "MCP Probe erfolgreich: reine MCP-Kommunikation ueber /app/mcp bestaetigt."
+Write-Host "MCP Handshake erfolgreich: reine MCP-Kommunikation ueber /app/mcp bestaetigt."
 exit 0

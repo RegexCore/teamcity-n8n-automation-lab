@@ -53,8 +53,9 @@ Do not treat the included scripts, Docker setup, or generated reports as product
 - [scripts/list-teamcity-data-rest-api.ps1](scripts/list-teamcity-data-rest-api.ps1): lists projects, build configurations, and queue entries directly via the TeamCity REST API
 - [scripts/query-teamcity-builds-rest-api.ps1](scripts/query-teamcity-builds-rest-api.ps1): queries builds, logs, tests, artifacts, and agents directly via the TeamCity REST API
 - [scripts/query-teamcity-builds-mcp.ps1](scripts/query-teamcity-builds-mcp.ps1): MCP-only query flow (JSON-RPC over `/app/mcp`)
-- [scripts/test-teamcity-mcp-endpoint-direct-api.ps1](scripts/test-teamcity-mcp-endpoint-direct-api.ps1): MCP-only handshake smoke test (`initialize -> initialized -> tools/list`)
-- [scripts/test-teamcity-rest-api-and-mcp-json-rpc.ps1](scripts/test-teamcity-rest-api-and-mcp-json-rpc.ps1): MCP-only by default, optional mixed mode with direct API checks
+- [scripts/test-teamcity-direct-api-variants.ps1](scripts/test-teamcity-direct-api-variants.ps1): direct REST API test variants (`inventory`, `filters`, `methods`, `plugins`, `negative`)
+- [scripts/test-teamcity-mcp-all-tools.ps1](scripts/test-teamcity-mcp-all-tools.ps1): MCP probe that discovers tools and calls all available tool functions with practical variants
+- [scripts/test-teamcity-mcp-handshake.ps1](scripts/test-teamcity-mcp-handshake.ps1): MCP-only handshake smoke test (`initialize -> initialized -> tools/list`)
 - [LICENSE](LICENSE): repository license
 
 ## 3. Architecture
@@ -68,12 +69,10 @@ flowchart LR
   D --> F[create-teamcity-project-rest-api.ps1]
   D --> G[list-teamcity-data-rest-api.ps1]
   D --> H[query-teamcity-builds-rest-api.ps1]
-  D --> I[test-teamcity-mcp-endpoint-direct-api.ps1]
-  D --> J[test-teamcity-rest-api-and-mcp-json-rpc.ps1]
-  E --> K[query-teamcity-builds-mcp.ps1]
-  E --> J
-  J --> L[Combined Diagnostics Report]
-  J --> M[Raw Request/Response JSON]
+  D --> I[test-teamcity-direct-api-variants.ps1]
+  E --> J[query-teamcity-builds-mcp.ps1]
+  E --> K[test-teamcity-mcp-handshake.ps1]
+  E --> L[test-teamcity-mcp-all-tools.ps1]
 ```
 
 ```mermaid
@@ -89,10 +88,12 @@ sequenceDiagram
   S->>T: GET builds/logs/tests/artifacts/agents
   U->>S: query-teamcity-builds-mcp.ps1
   S->>T: POST MCP JSON-RPC tools/list and tools/call
-  U->>S: test-teamcity-mcp-endpoint-direct-api.ps1
-    S->>T: GET plugins and MCP endpoints
-  U->>S: test-teamcity-rest-api-and-mcp-json-rpc.ps1
-    S->>T: REST checks + MCP endpoint probes + optional JSON-RPC probes
+  U->>S: test-teamcity-mcp-handshake.ps1
+    S->>T: POST MCP JSON-RPC initialize, initialized, tools/list via /app/mcp
+  U->>S: test-teamcity-direct-api-variants.ps1
+    S->>T: GET/HEAD/OPTIONS against /app/rest/... variants
+  U->>S: test-teamcity-mcp-all-tools.ps1
+    S->>T: tools/list and tools/call across available MCP tools
     T-->>S: status, headers, body
     S-->>U: report files
 ```
@@ -256,18 +257,36 @@ You only need to authorize again after running `docker compose down -v` (full vo
 
 ## 9. Scripts
 
+### 9.a Script Summary (What Is Tested)
+
+- `create-teamcity-project-rest-api.ps1` (REST): creates or updates demo projects/build configurations and can queue builds; tests write access and object creation flow on `/app/rest/...`.
+- `list-teamcity-data-rest-api.ps1` (REST): reads project/buildType/queue inventory; tests basic read access and visibility of TeamCity objects.
+- `query-teamcity-builds-rest-api.ps1` (REST): performs broader build diagnostics (builds, queue, running, failed, tests, artifacts, agents); tests multi-endpoint REST querying and report generation.
+- `test-teamcity-direct-api-variants.ps1` (REST): runs grouped direct API variants (`inventory`, `filters`, `methods`, `plugins`, `negative`); tests endpoint behavior, locator/query behavior, HTTP method handling, and expected error cases.
+- `test-teamcity-mcp-handshake.ps1` (MCP): runs MCP session bootstrap (`initialize -> notifications/initialized -> tools/list`); tests that MCP endpoint and session handling work end-to-end.
+- `test-teamcity-mcp-all-tools.ps1` (MCP): discovers available tools and executes tool calls with multiple variants; tests practical MCP usage and captures full raw MCP client-server exchanges.
+- `query-teamcity-builds-mcp.ps1` (MCP): executes build-related queries through MCP tools; tests MCP-based read workflow for projects/build configurations/builds (optional build-specific calls).
+
+Expected output artifacts by script family:
+
+- REST variants: `teamcity-direct-api-variants-<variant>-*.json`
+- REST query: `tc-builds-query-rest-api-*.json`
+- MCP handshake/all-tools/query: `teamcity-mcp-all-tools-*.json`, `tc-builds-query-mcp-*.json`
+
 ### 9.0 Quick Test Matrix (MCP vs Direct API)
 
 - MCP-only tests (no direct REST endpoint checks from client):
+  - `pwsh ./scripts/test-teamcity-mcp-handshake.ps1`
+  - `pwsh ./scripts/test-teamcity-mcp-all-tools.ps1`
   - `pwsh ./scripts/query-teamcity-builds-mcp.ps1`
-  - `pwsh ./scripts/test-teamcity-mcp-endpoint-direct-api.ps1`
-  - `pwsh ./scripts/test-teamcity-rest-api-and-mcp-json-rpc.ps1` (default mode)
 - Direct API tests (client calls `/app/rest/...` directly):
+  - `pwsh ./scripts/test-teamcity-direct-api-variants.ps1 -Variant all`
+  - `pwsh ./scripts/test-teamcity-direct-api-variants.ps1 -Variant filters`
+  - `pwsh ./scripts/test-teamcity-direct-api-variants.ps1 -Variant negative`
   - `pwsh ./scripts/list-teamcity-data-rest-api.ps1`
   - `pwsh ./scripts/query-teamcity-builds-rest-api.ps1`
   - `pwsh ./scripts/create-teamcity-project-rest-api.ps1`
-- Mixed mode (both direct API checks and MCP in one run):
-  - `pwsh ./scripts/test-teamcity-rest-api-and-mcp-json-rpc.ps1 -IncludeDirectApiChecks`
+
 
 If PowerShell blocks script execution, allow it for the current session:
 
@@ -346,103 +365,83 @@ What it prints:
 
 This script is REST-only. It does not test MCP directly.
 
-### 9.3 test-teamcity-mcp-endpoint-direct-api.ps1
+### 9.3 test-teamcity-direct-api-variants.ps1
 
-File: [scripts/test-teamcity-mcp-endpoint-direct-api.ps1](scripts/test-teamcity-mcp-endpoint-direct-api.ps1)
+File: [scripts/test-teamcity-direct-api-variants.ps1](scripts/test-teamcity-direct-api-variants.ps1)
+
+Run all direct API variants:
+
+```powershell
+pwsh ./scripts/test-teamcity-direct-api-variants.ps1 -Variant all
+```
+
+Run a single direct API variant:
+
+```powershell
+pwsh ./scripts/test-teamcity-direct-api-variants.ps1 -Variant filters
+```
+
+Available variants:
+
+- `inventory`: core direct `/app/rest/...` endpoints
+- `filters`: query and locator variations
+- `methods`: HTTP method checks (`GET`, `HEAD`, `OPTIONS`)
+- `plugins`: plugin inventory endpoint checks
+- `negative`: expected-error paths for diagnostics
+
+Raw protocol fields per direct API call in the report:
+
+- `method`, `url`, `requestHeaders`, `rawRequestBody`
+- `status`, `responseHeaders`, `rawResponseBody`
+- `ok`, `error`, `responseSnippet`
+
+### 9.4 test-teamcity-mcp-all-tools.ps1
+
+File: [scripts/test-teamcity-mcp-all-tools.ps1](scripts/test-teamcity-mcp-all-tools.ps1)
 
 Run:
 
 ```powershell
-pwsh ./scripts/test-teamcity-mcp-endpoint-direct-api.ps1
+pwsh ./scripts/test-teamcity-mcp-all-tools.ps1
 ```
 
 What it does:
 
-- runs MCP JSON-RPC only against `/app/mcp`
-- executes `initialize`, then `notifications/initialized`, then `tools/list`
-- verifies MCP session handling without direct `/app/rest/...` client calls
+- executes `initialize`, `notifications/initialized`, `tools/list`, `resources/list`, and `prompts/list`
+- discovers tool definitions dynamically from `tools/list`
+- calls every discovered tool at least once
+- executes practical variants for known TeamCity tools (for example multiple `teamcity_rest_get` requests)
+- stores raw and parsed request/response payloads in one report
 
-What the result means:
+Raw protocol fields per MCP exchange in the report:
 
-- `200` on plugin list: TeamCity is reachable and responding
-- MCP text found: the MCP plugin is visible in TeamCity
-- `405` on `/app/mcp`: the endpoint exists, but the probe used a method the endpoint does not accept for that request
-- `404` on `/app/mcp/sse` or `/mcp`: those tested paths are not available in this setup
+- `requestMethod`, `url`, `requestHeaders`, `rawRequestBody`
+- `status`, `responseHeaders`, `rawResponseBody`
+- `label`, `ok`, `error`
 
-This is the quick MCP-only handshake smoke test.
+Complete communication trace:
 
-### 9.4 test-teamcity-rest-api-and-mcp-json-rpc.ps1
+- `exchanges[]` contains setup calls, meta calls, and every `tools/call` exchange in order
 
-File: [scripts/test-teamcity-rest-api-and-mcp-json-rpc.ps1](scripts/test-teamcity-rest-api-and-mcp-json-rpc.ps1)
+Optional write-mode for `teamcity_rest_post` tools:
+
+```powershell
+pwsh ./scripts/test-teamcity-mcp-all-tools.ps1 -AllowWriteOperations
+```
+
+### 9.5 test-teamcity-mcp-handshake.ps1
+
+File: [scripts/test-teamcity-mcp-handshake.ps1](scripts/test-teamcity-mcp-handshake.ps1)
 
 Run:
 
 ```powershell
-pwsh ./scripts/test-teamcity-rest-api-and-mcp-json-rpc.ps1
+pwsh ./scripts/test-teamcity-mcp-handshake.ps1
 ```
 
-Default behavior:
+This is the clear MCP-only handshake smoke test entrypoint.
 
-- runs in MCP-only mode by default
-- skips direct REST inventory and endpoint checks
-- runs JSON-RPC probes (`initialize`, `notifications/initialized`, `tools/list`)
-- enables raw body capture automatically if no explicit output mode is selected
-- writes two reports by default:
-  - an advanced analysis report
-  - a raw request/response report
-
-Enable mixed mode (direct API + MCP):
-
-```powershell
-pwsh ./scripts/test-teamcity-rest-api-and-mcp-json-rpc.ps1 -IncludeDirectApiChecks
-```
-
-Optional JSON-RPC probe mode (mainly relevant for mixed mode):
-
-```powershell
-pwsh ./scripts/test-teamcity-rest-api-and-mcp-json-rpc.ps1 -JsonRpcProbes
-```
-
-Optional NDJSON trace mode:
-
-```powershell
-pwsh ./scripts/test-teamcity-rest-api-and-mcp-json-rpc.ps1 -JsonRpcProbes -NdjsonTrace
-```
-
-Legacy option (still available): skip REST inventory in mixed mode:
-
-```powershell
-pwsh ./scripts/test-teamcity-rest-api-and-mcp-json-rpc.ps1 -SkipRestInventory
-```
-
-Explicit report paths:
-
-```powershell
-pwsh ./scripts/test-teamcity-rest-api-and-mcp-json-rpc.ps1 -JsonRpcProbes -ReportPath "./teamcity-rest-api-and-mcp-json-rpc-report.json" -RawJsonPath "./teamcity-rest-api-and-mcp-json-rpc-raw.json" -NdjsonPath "./teamcity-rest-api-and-mcp-json-rpc-trace.ndjson"
-```
-
-Recommended default:
-
-- keep `TEAMCITY_REPORT_DIR=reports` in [.env](.env)
-- `reports/` is ignored by Git
-- the scripts create the folder automatically if it does not exist
-
-What it checks in default MCP-only mode:
-
-- `POST /app/mcp` with `initialize`
-- `POST /app/mcp` with `notifications/initialized`
-- `POST /app/mcp` with `tools/list`
-
-What it checks in mixed mode (`-IncludeDirectApiChecks`):
-
-- `GET /app/rest/projects`
-- `GET /app/rest/buildTypes`
-- `GET /app/rest/buildQueue`
-- `GET /app/rest/server/plugins`
-- `GET` and `OPTIONS` against MCP-related endpoints
-- optional `POST` JSON-RPC probes such as `initialize` and `tools/list`
-
-### 9.5 query-teamcity-builds-rest-api.ps1
+### 9.6 query-teamcity-builds-rest-api.ps1
 
 File: [scripts/query-teamcity-builds-rest-api.ps1](scripts/query-teamcity-builds-rest-api.ps1)
 
@@ -462,7 +461,7 @@ Default report pattern:
 
 - `tc-builds-query-rest-api-*.json`
 
-### 9.6 query-teamcity-builds-mcp.ps1
+### 9.7 query-teamcity-builds-mcp.ps1
 
 File: [scripts/query-teamcity-builds-mcp.ps1](scripts/query-teamcity-builds-mcp.ps1)
 
@@ -493,98 +492,45 @@ Default report pattern:
 
 All generated report files are written to `reports/` by default via `TEAMCITY_REPORT_DIR=reports` in [.env](.env).
 
-### 10.1 Advanced report
+### 10.1 Direct API Variant Reports
 
 Pattern:
 
-- `teamcity-rest-api-and-mcp-json-rpc-report-*.json`
+- `teamcity-direct-api-variants-<variant>-*.json`
 
-Purpose:
+Source script:
 
-- human-readable diagnostic file
-- combines REST inventory, MCP endpoint checks, and optional JSON-RPC probe results
+- `test-teamcity-direct-api-variants.ps1`
 
-Important top-level fields:
-
-- `generatedAt`
-- `baseUrl`
-- `tokenDetected`
-- `rawBodiesEnabled`
-- `ndjsonTraceEnabled`
-- `rawJsonOutputEnabled`
-- `restInventory`
-- `restSummary`
-- `mcpEndpointChecks`
-- `jsonRpcProbes`
-
-Important fields inside each inventory/check record:
-
-- `timestamp`
-- `method`
-- `url`
-- `requestHeaders`
-- `requestBody`
-- `status`
-- `statusText`
-- `contentType`
-- `allow`
-- `responseHeaders`
-- `bodyLength`
-- `bodySnippet`
-- `bodyRaw`
-- `responseBodyRaw`
-- `ok`
-- `error`
-
-### 10.2 Raw request/response report
+### 10.2 MCP All-Tools Reports
 
 Pattern:
 
-- `teamcity-rest-api-and-mcp-json-rpc-raw-*.json`
+- `teamcity-mcp-all-tools-*.json`
 
-Purpose:
+Source script:
 
-- stores request and response exchanges as directly as possible
-- intended for inspecting what the script sent and what TeamCity returned
+- `test-teamcity-mcp-all-tools.ps1`
 
-Structure:
-
-- `generatedAt`
-- `baseUrl`
-- `tokenDetected`
-- `exchanges`
-
-Each `exchange` contains:
-
-- `category`
-- `request`
-- `response`
-
-Each `request` contains:
-
-- `timestamp`
-- `method`
-- `url`
-- `headers`
-- `body`
-
-Each `response` contains:
-
-- `status`
-- `statusText`
-- `headers`
-- `body`
-
-### 10.3 NDJSON trace
+### 10.3 REST Query Reports
 
 Pattern:
 
-- `teamcity-rest-api-and-mcp-json-rpc-trace-*.ndjson`
+- `tc-builds-query-rest-api-*.json`
 
-Purpose:
+Source script:
 
-- one JSON object per line
-- useful for later machine processing, grepping, or log-style analysis
+- `query-teamcity-builds-rest-api.ps1`
+
+### 10.4 MCP Query Reports
+
+Pattern:
+
+- `tc-builds-query-mcp-*.json`
+
+Source script:
+
+- `query-teamcity-builds-mcp.ps1`
 
 ## 11. What the Raw MCP Files Actually Contain
 
@@ -668,16 +614,16 @@ pwsh ./scripts/create-teamcity-project-rest-api.ps1
 pwsh ./scripts/list-teamcity-data-rest-api.ps1
 ```
 
-4. Run the direct API smoke test for the MCP endpoint:
+4. Run the MCP JSON-RPC handshake smoke test:
 
 ```powershell
-pwsh ./scripts/test-teamcity-mcp-endpoint-direct-api.ps1
+pwsh ./scripts/test-teamcity-mcp-handshake.ps1
 ```
 
-5. Run the combined REST and MCP diagnostics:
+5. Run direct API variants (clear direct-only test):
 
 ```powershell
-pwsh ./scripts/test-teamcity-rest-api-and-mcp-json-rpc.ps1
+pwsh ./scripts/test-teamcity-direct-api-variants.ps1 -Variant all
 ```
 
 6. Run explicit build queries depending on protocol:
@@ -690,9 +636,8 @@ pwsh ./scripts/query-teamcity-builds-mcp.ps1
 7. Inspect the generated files:
 
 - by default under `reports/`
-- `teamcity-rest-api-and-mcp-json-rpc-report-*.json`
-- `teamcity-rest-api-and-mcp-json-rpc-raw-*.json`
-- optionally `teamcity-rest-api-and-mcp-json-rpc-trace-*.ndjson`
+- `teamcity-direct-api-variants-<variant>-*.json`
+- `teamcity-mcp-all-tools-*.json`
 - `tc-builds-query-rest-api-*.json`
 - `tc-builds-query-mcp-*.json`
 
@@ -832,7 +777,7 @@ Fix:
 
 1. Check TeamCity Administration -> Plugins.
 2. Verify the MCP Server plugin is active.
-3. Run [scripts/test-teamcity-mcp-endpoint-direct-api.ps1](scripts/test-teamcity-mcp-endpoint-direct-api.ps1) again.
+3. Run [scripts/test-teamcity-mcp-handshake.ps1](scripts/test-teamcity-mcp-handshake.ps1) again.
 
 ### 17.3 405 on `/app/mcp`
 
