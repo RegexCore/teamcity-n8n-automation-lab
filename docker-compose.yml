@@ -1,0 +1,41 @@
+services:
+  teamcity-server:
+    build:
+      context: .
+      dockerfile: docker/teamcity-server/Dockerfile
+    container_name: teamcity-server
+    restart: unless-stopped
+    ports:
+      - "${TEAMCITY_HTTP_PORT:-8111}:8111"
+    volumes:
+      - teamcity_data:/data/teamcity_server/datadir
+      - teamcity_logs:/opt/teamcity/logs
+    environment:
+      TEAMCITY_SERVER_MEM_OPTS: "-Xms1g -Xmx2g -XX:+AlwaysPreTouch"
+
+  teamcity-agent:
+    build:
+      context: .
+      dockerfile: docker/teamcity-agent/Dockerfile
+    container_name: teamcity-agent-01
+    restart: unless-stopped
+    depends_on:
+      - teamcity-server
+    environment:
+      SERVER_URL: "http://teamcity-server:8111"
+      AGENT_NAME: "docker-agent-01"
+      AGENT_TOKEN: ""
+    volumes:
+      - agent_conf:/data/teamcity_agent/conf
+      - agent_work:/opt/buildagent/work
+      - agent_temp:/opt/buildagent/temp
+      - agent_system:/opt/buildagent/system
+    privileged: false
+
+volumes:
+  teamcity_data:
+  teamcity_logs:
+  agent_conf:
+  agent_work:
+  agent_temp:
+  agent_system:

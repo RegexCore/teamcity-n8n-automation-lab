@@ -1,0 +1,21 @@
+# Environment files
+# .env
+# .env.local
+
+# TeamCity / local runtime artifacts
+*.log
+logs/
+
+# Optional local plugin drop-in folder (if you add one later)
+plugins/
+
+# Docker local override file
+docker-compose.override.yml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.idea/
+.vscode/
