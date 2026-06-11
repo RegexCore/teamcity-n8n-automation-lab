@@ -299,6 +299,40 @@ Invoke-RestMethod -Method GET -Uri "$baseUrl/app/rest/buildQueue" -Headers $head
 Invoke-RestMethod -Method GET -Uri "$baseUrl/app/rest/builds?locator=count:5" -Headers $headers
 ```
 
+REST API log reading in practice (without helper scripts):
+
+```powershell
+# 1) Build list via /app/rest
+$buildsRes = Invoke-RestMethod -Method GET -Uri "$baseUrl/app/rest/builds?locator=state:finished,count:5&fields=build(id,number,status,buildTypeId,webUrl)" -Headers $headers
+$builds = @($buildsRes.build)
+
+# 2) Full log text per build (TeamCity log endpoint)
+foreach ($b in $builds) {
+  Write-Host ""
+  Write-Host ("=== Build {0} #{1} ({2}) ===" -f $b.id, $b.number, $b.status)
+
+  $logRes = Invoke-WebRequest -Method GET -Uri "$baseUrl/downloadBuildLog.html?buildId=$($b.id)" -Headers @{ Authorization = "Bearer $token"; Accept = "text/plain" }
+  $lines = @($logRes.Content -split "`r?`n")
+
+  # Example: keep only warnings/errors and print first 80 lines
+  $important = @($lines | Where-Object { $_ -match "\[(WARNING|FAILURE|ERROR)\]" })
+  if ($important.Count -eq 0) { $important = $lines }
+  $important | Select-Object -First 80 | ForEach-Object { Write-Host $_ }
+}
+```
+
+  Short flow (REST):
+
+  1. Fetch recent builds including `id`, `number`, and `status` via `/app/rest/builds`.
+  2. Use each `buildId` to fetch that build's log text.
+  3. Optionally filter log lines to `WARNING|FAILURE|ERROR` and print the first lines.
+
+  API clarification (REST):
+
+  - Yes: `/app/rest/builds` is the correct TeamCity REST API for build metadata.
+  - Yes: The shown log-text call works in practice for build logs.
+  - Important: Log text is fetched via `downloadBuildLog.html?buildId=...`, not via a `/app/rest/...` path.
+
 MCP JSON-RPC examples (raw client-server flow):
 
 The block below includes exactly 4 MCP requests after handshake setup:
@@ -353,15 +387,22 @@ $restGetRes = Invoke-McpRpc -Id "3" -Method "tools/call" -Params @{
 $restGetRes.Content
 
 # 3) tools/call -> teamcity_build_log
-# Hinweis: BuildId ggf. anpassen
+# Note: adjust buildId as needed
 $buildLogRes = Invoke-McpRpc -Id "4" -Method "tools/call" -Params @{
   name = "teamcity_build_log"
   arguments = @{ buildId = "1"; count = "50" }
 }
 $buildLogRes.Content
 
+# Optional: only warnings/errors from the log
+$buildLogWarnRes = Invoke-McpRpc -Id "4b" -Method "tools/call" -Params @{
+  name = "teamcity_build_log"
+  arguments = @{ buildId = "1"; filter = "warnings"; start = "0"; count = "100" }
+}
+$buildLogWarnRes.Content
+
 # 4) tools/call -> teamcity_rest_post
-# Sichere Demo mit absichtlich ungueltiger BuildType-ID (zeigt Request/Response, startet keinen echten Build)
+# Safe demo with intentionally invalid BuildType ID (shows request/response, does not start a real build)
 $restPostRes = Invoke-McpRpc -Id "5" -Method "tools/call" -Params @{
   name = "teamcity_rest_post"
   arguments = @{ path = "/app/rest/buildQueue"; body = '{"buildType":{"id":"__does_not_exist__"}}' }
@@ -369,18 +410,76 @@ $restPostRes = Invoke-McpRpc -Id "5" -Method "tools/call" -Params @{
 $restPostRes.Content
 ```
 
+MCP API log reading in practice (without helper scripts):
+
+```powershell
+# Handshake
+$mcpUrl = "$baseUrl/app/mcp"
+$mcpHeaders = @{ Authorization = "Bearer $token"; Accept = "application/json"; "Content-Type" = "application/json" }
+
+$initPayload = @{ jsonrpc = "2.0"; id = "1"; method = "initialize"; params = @{ protocolVersion = "2024-11-05"; capabilities = @{}; clientInfo = @{ name = "manual-mcp-client"; version = "1.0" } } } | ConvertTo-Json -Depth 20
+$initRes = Invoke-WebRequest -Method POST -Uri $mcpUrl -Headers $mcpHeaders -Body $initPayload
+$mcpHeaders["Mcp-Session-Id"] = [string]$initRes.Headers["Mcp-Session-Id"]
+
+$initializedPayload = @{ jsonrpc = "2.0"; method = "notifications/initialized"; params = @{} } | ConvertTo-Json -Depth 10
+Invoke-WebRequest -Method POST -Uri $mcpUrl -Headers $mcpHeaders -Body $initializedPayload | Out-Null
+
+function Invoke-McpRpc {
+  param([string]$Id, [string]$Method, [hashtable]$Params = @{})
+  $payload = @{ jsonrpc = "2.0"; id = $Id; method = $Method; params = $Params } | ConvertTo-Json -Depth 30
+  Invoke-WebRequest -Method POST -Uri $mcpUrl -Headers $mcpHeaders -Body $payload
+}
+
+# 1) Build IDs via teamcity_rest_get tool
+$buildsCall = Invoke-McpRpc -Id "10" -Method "tools/call" -Params @{ name = "teamcity_rest_get"; arguments = @{ path = "/app/rest/builds"; query = "locator=state:finished,count:5&fields=build(id,number,status,buildTypeId,webUrl)" } }
+$buildsEnvelope = ($buildsCall.Content | ConvertFrom-Json -Depth 60)
+$buildsJsonText = [string]$buildsEnvelope.result.content[0].text
+$buildsBody = (($buildsJsonText | ConvertFrom-Json -Depth 60).body)
+$builds = @($buildsBody.build)
+
+# 2) Log text via teamcity_build_log tool
+foreach ($b in $builds) {
+  Write-Host ""
+  Write-Host ("=== Build {0} #{1} ({2}) ===" -f $b.id, $b.number, $b.status)
+
+  $logCall = Invoke-McpRpc -Id "20" -Method "tools/call" -Params @{ name = "teamcity_build_log"; arguments = @{ buildId = [string]$b.id; count = "200" } }
+  $logEnvelope = ($logCall.Content | ConvertFrom-Json -Depth 60)
+  $logText = [string]$logEnvelope.result.content[0].text
+  $logLines = @($logText -split "`r?`n")
+
+  # Example: keep only warnings/errors and print first 80 lines
+  $important = @($logLines | Where-Object { $_ -match "\[(WARNING|FAILURE|ERROR)\]" })
+  if ($important.Count -eq 0) { $important = $logLines }
+  $important | Select-Object -First 80 | ForEach-Object { Write-Host $_ }
+}
+```
+
+Short flow (MCP):
+
+1. Start the MCP session with `initialize` and `notifications/initialized`.
+2. Fetch the build list via `tools/call` using `teamcity_rest_get`.
+3. Fetch each build log via `tools/call` using `teamcity_build_log`, and filter warnings/errors if needed.
+
+API clarification (MCP):
+
+- Yes: `teamcity_build_log` is the correct MCP tool command for build logs.
+- Yes: The correct MCP call is `tools/call` with `name = "teamcity_build_log"`.
+- Typical arguments are `buildId` (required), with optional `count`, `start`, and `filter`.
+
 ### 9.0 Quick Test Matrix (MCP vs Direct API)
 
 - MCP-only tests (no direct REST endpoint checks from client):
   - `pwsh ./scripts/test-teamcity-mcp-handshake.ps1`
   - `pwsh ./scripts/test-teamcity-mcp-all-tools.ps1`
   - `pwsh ./scripts/query-teamcity-builds-mcp.ps1`
+  - `pwsh ./scripts/read-teamcity-build-logs-mcp.ps1 -AllBuilds -MaxBuilds 5 -LogFilter all`
 - Direct API tests (client calls `/app/rest/...` directly):
   - `pwsh ./scripts/test-teamcity-direct-api-variants.ps1 -Variant all`
   - `pwsh ./scripts/test-teamcity-direct-api-variants.ps1 -Variant filters`
   - `pwsh ./scripts/test-teamcity-direct-api-variants.ps1 -Variant negative`
   - `pwsh ./scripts/list-teamcity-data-rest-api.ps1`
   - `pwsh ./scripts/query-teamcity-builds-rest-api.ps1`
+  - `pwsh ./scripts/read-teamcity-build-logs-rest.ps1 -AllBuilds -MaxBuilds 5 -LogFilter all`
   - `pwsh ./scripts/create-teamcity-project-rest-api.ps1`
 
 
@@ -806,6 +905,26 @@ Full clean reinstall:
 ```powershell
 docker compose down -v --remove-orphans
 docker compose up -d --build
+```
+
+Build logs via MCP (recommended MCP flow):
+
+```powershell
+# Last finished build via MCP
+pwsh ./scripts/read-teamcity-build-logs-mcp.ps1
+
+# Multiple builds via MCP
+pwsh ./scripts/read-teamcity-build-logs-mcp.ps1 -AllBuilds -MaxBuilds 5 -LogFilter all
+
+# Specific build IDs via MCP
+pwsh ./scripts/read-teamcity-build-logs-mcp.ps1 -BuildId 6,5 -LogFilter warnings
+```
+
+Build logs via direct API (REST):
+
+```powershell
+# Scripted REST flow
+pwsh ./scripts/read-teamcity-build-logs-rest.ps1 -AllBuilds -MaxBuilds 5 -LogFilter all
 ```
 
 ## 15. Public GitHub Repository Notes
