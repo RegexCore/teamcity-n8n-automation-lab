@@ -32,6 +32,34 @@ services:
       - agent_system:/opt/buildagent/system
     privileged: false
 
+  n8n:
+    build:
+      context: .
+      dockerfile: docker/n8n/Dockerfile
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "${N8N_HTTP_PORT:-5678}:5678"
+    environment:
+      N8N_HOST: "${N8N_HOST:-localhost}"
+      N8N_PORT: "5678"
+      N8N_PROTOCOL: "${N8N_PROTOCOL:-http}"
+      WEBHOOK_URL: "${N8N_WEBHOOK_URL:-http://localhost:5678/}"
+      GENERIC_TIMEZONE: "${N8N_TIMEZONE:-Europe/Berlin}"
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+  ollama:
+    build:
+      context: .
+      dockerfile: docker/ollama/Dockerfile
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "${OLLAMA_HTTP_PORT:-11434}:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
 volumes:
   teamcity_data:
   teamcity_logs:
@@ -39,3 +67,5 @@ volumes:
   agent_work:
   agent_temp:
   agent_system:
+  n8n_data:
+  ollama_data:
