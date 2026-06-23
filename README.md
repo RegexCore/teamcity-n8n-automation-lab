@@ -1,62 +1,62 @@
 ﻿# TeamCity + n8n Docker Lab
 
-Lokale Testumgebung mit Docker Compose für TeamCity (REST + MCP Testflows) und n8n (UI + Webhooks).
+Local Docker Compose lab for TeamCity (REST + MCP test flows), n8n (UI + chat/webhooks), and Ollama.
 
-## Inhaltsverzeichnis
+## Table of Contents
 
 - [1. TeamCity](#1-teamcity)
-- [1.1 Ziel und Umfang](#11-ziel-und-umfang)
-- [1.2 TeamCity Architektur](#12-teamcity-architektur)
-- [1.3 TeamCity Voraussetzungen](#13-teamcity-voraussetzungen)
-- [1.4 TeamCity Konfiguration](#14-teamcity-konfiguration)
-- [1.5 TeamCity Erststart](#15-teamcity-erststart)
-- [1.6 TeamCity Token Setup](#16-teamcity-token-setup)
-- [1.7 TeamCity Agent Autorisierung](#17-teamcity-agent-autorisierung)
-- [1.8 TeamCity Skripte](#18-teamcity-skripte)
-- [1.9 TeamCity Reports](#19-teamcity-reports)
-- [1.10 TeamCity MCP Rohdaten](#110-teamcity-mcp-rohdaten)
-- [1.11 TeamCity Testablauf](#111-teamcity-testablauf)
-- [1.12 TeamCity Persistenz](#112-teamcity-persistenz)
-- [1.13 TeamCity Befehle](#113-teamcity-befehle)
-- [1.14 TeamCity Troubleshooting](#114-teamcity-troubleshooting)
-- [1.14.6 PowerShell Skripte blockiert](#1146-powershell-skripte-blockiert)
+- [1.1 Scope](#11-scope)
+- [1.2 Architecture](#12-architecture)
+- [1.3 Prerequisites](#13-prerequisites)
+- [1.4 Configuration](#14-configuration)
+- [1.5 First Start](#15-first-start)
+- [1.6 Token Setup](#16-token-setup)
+- [1.7 Agent Authorization](#17-agent-authorization)
+- [1.8 Scripts](#18-scripts)
+- [1.9 Reports](#19-reports)
+- [1.10 MCP Raw Data](#110-mcp-raw-data)
+- [1.11 Test Flow](#111-test-flow)
+- [1.12 Persistence](#112-persistence)
+- [1.13 Commands](#113-commands)
+- [1.14 Troubleshooting](#114-troubleshooting)
+- [1.14.6 PowerShell Scripts Blocked](#1146-powershell-scripts-blocked)
 - [2. n8n](#2-n8n)
-- [2.1 Ziel und Umfang](#21-ziel-und-umfang)
-- [2.2 n8n Architektur](#22-n8n-architektur)
-- [2.3 n8n Konfiguration](#23-n8n-konfiguration)
-- [2.4 n8n Erststart](#24-n8n-erststart)
-- [2.5 n8n Persistenz](#25-n8n-persistenz)
-- [2.6 n8n Befehle](#26-n8n-befehle)
-- [2.7 n8n Troubleshooting](#27-n8n-troubleshooting)
-- [2.8 Geplante Umsetzung: Eigener Chat per Webhook API](#28-geplante-umsetzung-eigener-chat-per-webhook-api)
+- [2.1 Scope](#21-scope)
+- [2.2 Architecture](#22-architecture)
+- [2.3 Configuration](#23-configuration)
+- [2.4 First Start](#24-first-start)
+- [2.5 Persistence](#25-persistence)
+- [2.6 Commands](#26-commands)
+- [2.7 Troubleshooting](#27-troubleshooting)
+- [2.8 Planned Implementation: Custom Chat via Webhook API](#28-planned-implementation-custom-chat-via-webhook-api)
 - [3. Ollama](#3-ollama)
-- [3.1 Ziel und Umfang](#31-ziel-und-umfang)
-- [3.2 Ollama Architektur](#32-ollama-architektur)
-- [3.3 Ollama Konfiguration](#33-ollama-konfiguration)
-- [3.4 Ollama Erststart](#34-ollama-erststart)
-- [3.5 Ollama Persistenz](#35-ollama-persistenz)
-- [3.6 Ollama Befehle](#36-ollama-befehle)
-- [3.7 Ollama Troubleshooting](#37-ollama-troubleshooting)
-- [3.8 Ollama Einrichtung Schritt fuer Schritt](#38-ollama-einrichtung-schritt-fuer-schritt)
+- [3.1 Scope](#31-scope)
+- [3.2 Architecture](#32-architecture)
+- [3.3 Configuration](#33-configuration)
+- [3.4 First Start](#34-first-start)
+- [3.5 Persistence](#35-persistence)
+- [3.6 Commands](#36-commands)
+- [3.7 Troubleshooting](#37-troubleshooting)
+- [3.8 Step-by-Step Setup](#38-step-by-step-setup)
 - [4. Repository](#4-repository)
-- [4.1 Inhalt und Struktur](#41-inhalt-und-struktur)
-- [4.2 Plattform Kompatibilitaet](#42-plattform-kompatibilitaet)
-- [4.3 Hinweise fuer GitHub](#43-hinweise-fuer-github)
-- [4.4 Rechtliches](#44-rechtliches)
+- [4.1 Contents and Structure](#41-contents-and-structure)
+- [4.2 Platform Compatibility](#42-platform-compatibility)
+- [4.3 GitHub Notes](#43-github-notes)
+- [4.4 Legal](#44-legal)
 
 ## 1. TeamCity
 
-## 1.1 Ziel und Umfang
+## 1.1 Scope
 
-Dieser Teil deckt alles rund um TeamCity im Lab ab:
+This section covers TeamCity in this lab:
 
-- lokaler TeamCity Server in Docker
-- lokaler TeamCity Agent in Docker
-- REST API Tests
-- MCP Endpoint Tests und Tool-Aufrufe
-- Build Logs und Report-Dateien
+- local TeamCity server in Docker
+- local TeamCity agent in Docker
+- REST API testing
+- MCP endpoint testing and tool calls
+- build logs and report files
 
-## 1.2 TeamCity Architektur
+## 1.2 Architecture
 
 ```mermaid
 flowchart LR
@@ -72,21 +72,21 @@ flowchart LR
     E --> K[teamcity-scripts/query-teamcity-builds-mcp.ps1]
 ```
 
-Container:
+Containers:
 
 - teamcity-server
 - teamcity-agent
 
-## 1.3 TeamCity Voraussetzungen
+## 1.3 Prerequisites
 
-- Docker Desktop laeuft
-- Docker Compose v2 verfuegbar
-- PowerShell 7 als `pwsh`
-- TeamCity Initial-Setup im Browser einmal abgeschlossen
+- Docker Desktop is running
+- Docker Compose v2 is available
+- PowerShell 7 as `pwsh`
+- TeamCity initial setup completed once in browser
 
-## 1.4 TeamCity Konfiguration
+## 1.4 Configuration
 
-Relevante Werte in `.env`:
+Relevant values in `.env`:
 
 ```env
 TEAMCITY_HTTP_PORT=8111
@@ -95,43 +95,43 @@ TEAMCITY_REPORT_DIR=reports
 TEAMCITY_TOKEN=
 ```
 
-Bedeutung:
+Meaning:
 
-- `TEAMCITY_HTTP_PORT`: veroeffentlichter TeamCity UI Port
-- `TEAMCITY_BASE_URL`: Standard-Basis-URL fuer Skripte
-- `TEAMCITY_REPORT_DIR`: Zielordner fuer Reports
-- `TEAMCITY_TOKEN`: Personal Access Token fuer REST/MCP Skripte
+- `TEAMCITY_HTTP_PORT`: published TeamCity UI port
+- `TEAMCITY_BASE_URL`: default base URL for scripts
+- `TEAMCITY_REPORT_DIR`: target directory for reports
+- `TEAMCITY_TOKEN`: personal access token for REST/MCP scripts
 
-## 1.5 TeamCity Erststart
+## 1.5 First Start
 
 ```powershell
 docker compose up -d --build
 ```
 
-TeamCity oeffnen:
+Open TeamCity:
 
 - http://localhost:8111
 
-Danach den TeamCity Startup Wizard einmal abschliessen.
+Then complete the TeamCity startup wizard once.
 
-## 1.6 TeamCity Token Setup
+## 1.6 Token Setup
 
-1. TeamCity im Browser oeffnen.
-2. Benutzerprofil oeffnen.
-3. Access Token erstellen.
-4. Token in `.env` als `TEAMCITY_TOKEN` eintragen.
+1. Open TeamCity in browser.
+2. Open your user profile.
+3. Create an access token.
+4. Put the token into `.env` as `TEAMCITY_TOKEN`.
 
-## 1.7 TeamCity Agent Autorisierung
+## 1.7 Agent Authorization
 
-Nach dem ersten Start ist der Agent oft `Unauthorized`.
+After first startup, the agent is often `Unauthorized`.
 
-UI Weg:
+UI path:
 
 1. TeamCity -> Agents -> Unauthorized.
-2. `docker-agent-01` waehlen.
-3. Authorize klicken.
+2. Select `docker-agent-01`.
+3. Click Authorize.
 
-REST Weg:
+REST path:
 
 ```powershell
 Invoke-RestMethod `
@@ -141,49 +141,49 @@ Invoke-RestMethod `
   -Body "true"
 ```
 
-## 1.8 TeamCity Skripte
+## 1.8 Scripts
 
-Script-Uebersicht in `teamcity-scripts/`:
+Script overview in `teamcity-scripts/`:
 
-- `create-teamcity-project-rest-api.ps1`: Demo-Projekte/Build-Konfigurationen anlegen
-- `list-teamcity-data-rest-api.ps1`: Projekte/BuildTypes/Queue listen
-- `query-teamcity-builds-rest-api.ps1`: Builds/Logs/Tests/Artifacts/Agents via REST
-- `query-teamcity-builds-mcp.ps1`: Build-Daten via MCP JSON-RPC
-- `test-teamcity-direct-api-variants.ps1`: direkte REST Varianten testen
-- `test-teamcity-mcp-handshake.ps1`: MCP Handshake testen
-- `test-teamcity-mcp-all-tools.ps1`: MCP Tools discovern und aufrufen
-- `read-teamcity-build-logs-rest.ps1`: Build Logs via REST ziehen
-- `read-teamcity-build-logs-mcp.ps1`: Build Logs via MCP ziehen
+- `create-teamcity-project-rest-api.ps1`: create demo projects and build configs
+- `list-teamcity-data-rest-api.ps1`: list projects/buildTypes/queue
+- `query-teamcity-builds-rest-api.ps1`: query builds/logs/tests/artifacts/agents via REST
+- `query-teamcity-builds-mcp.ps1`: query build data via MCP JSON-RPC
+- `test-teamcity-direct-api-variants.ps1`: test direct REST variants
+- `test-teamcity-mcp-handshake.ps1`: test MCP handshake
+- `test-teamcity-mcp-all-tools.ps1`: discover and call MCP tools
+- `read-teamcity-build-logs-rest.ps1`: fetch build logs via REST
+- `read-teamcity-build-logs-mcp.ps1`: fetch build logs via MCP
 
-## 1.9 TeamCity Reports
+## 1.9 Reports
 
-Standardmaessig unter `reports/`:
+Default output under `reports/`:
 
 - `teamcity-direct-api-variants-<variant>-*.json`
 - `teamcity-mcp-all-tools-*.json`
 - `tc-builds-query-rest-api-*.json`
 - `tc-builds-query-mcp-*.json`
 
-## 1.10 TeamCity MCP Rohdaten
+## 1.10 MCP Raw Data
 
-Wichtige Felder in MCP Report-Dateien:
+Important fields in MCP report files:
 
 - Request: `requestHeaders`, `requestBody`
 - Response: `responseHeaders`, `responseBodyRaw`
 
-Hinweis: JSON Escaping wie `\"` oder `\n` ist normal fuer gespeicherte JSON-Dateien.
+Note: escaped JSON such as `\"` or `\n` is normal in persisted JSON files.
 
-## 1.11 TeamCity Testablauf
+## 1.11 Test Flow
 
-1. Stack starten.
-2. Demo-Daten erzeugen.
-3. Daten und Queue pruefen.
-4. MCP Handshake laufen lassen.
-5. REST Varianten testen.
-6. REST und MCP Build Queries ausfuehren.
-7. Reports in `reports/` pruefen.
+1. Start the stack.
+2. Create demo data.
+3. Verify data and queue.
+4. Run MCP handshake.
+5. Test REST variants.
+6. Run REST and MCP build queries.
+7. Check reports in `reports/`.
 
-Beispiele:
+Examples:
 
 ```powershell
 pwsh ./teamcity-scripts/create-teamcity-project-rest-api.ps1
@@ -194,9 +194,9 @@ pwsh ./teamcity-scripts/query-teamcity-builds-rest-api.ps1
 pwsh ./teamcity-scripts/query-teamcity-builds-mcp.ps1
 ```
 
-## 1.12 TeamCity Persistenz
+## 1.12 Persistence
 
-Persistente Volumes:
+Persistent volumes:
 
 - `teamcity_data`
 - `teamcity_logs`
@@ -205,14 +205,14 @@ Persistente Volumes:
 - `agent_temp`
 - `agent_system`
 
-Vollstaendig sauberer Reset:
+Full clean reset:
 
 ```powershell
 docker compose down -v --remove-orphans
 docker compose up -d --build
 ```
 
-## 1.13 TeamCity Befehle
+## 1.13 Commands
 
 Start:
 
@@ -239,63 +239,63 @@ Stop:
 docker compose down
 ```
 
-## 1.14 TeamCity Troubleshooting
+## 1.14 Troubleshooting
 
 ### 1.14.1 401 Unauthorized
 
-- Token fehlt/ungueltig/abgelaufen
-- `TEAMCITY_TOKEN` in `.env` aktualisieren
+- Token is missing/invalid/expired
+- update `TEAMCITY_TOKEN` in `.env`
 
-### 1.14.2 404 auf MCP Pfaden
+### 1.14.2 404 on MCP paths
 
-- MCP Plugin nicht aktiv oder falscher Pfad
-- Plugin in TeamCity pruefen
+- MCP plugin is not active or path is wrong
+- check plugin status in TeamCity
 
-### 1.14.3 405 auf `/app/mcp`
+### 1.14.3 405 on `/app/mcp`
 
-- Endpoint existiert, Methodenprobe war fuer diesen Request nicht erlaubt
+- endpoint exists, but method is not allowed for that request
 
-### 1.14.4 Agent verbunden, aber Builds laufen nicht
+### 1.14.4 Agent connected but builds do not run
 
-- Agent ist `Unauthorized`
-- Agent in TeamCity autorisieren (siehe 1.7)
+- agent is `Unauthorized`
+- authorize agent in TeamCity (see 1.7)
 
-### 1.14.5 TeamCity nicht erreichbar
+### 1.14.5 TeamCity not reachable
 
 ```powershell
 docker compose ps
 docker compose logs --tail=120 teamcity-server
 ```
 
-Port in `.env` pruefen:
+Check port in `.env`:
 
 - `TEAMCITY_HTTP_PORT`
 
-### 1.14.6 PowerShell Skripte blockiert
+### 1.14.6 PowerShell Scripts Blocked
 
-Fehlerbild:
+Error pattern:
 
-- `Die Ausfuehrung von Skripts auf diesem System ist deaktiviert`
+- `Script execution is disabled on this system`
 
-Einmalig fuer einen Lauf (empfohlen fuer schnellen Test):
+One-time run (recommended for quick test):
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\teamcity-scripts\create-teamcity-project-rest-api.ps1
 ```
 
-Dauerhaft fuer den aktuellen Benutzer:
+Persistent for current user:
 
 ```powershell
 Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 ```
 
-Danach neue PowerShell Session oeffnen und Skript normal starten:
+Then open a new PowerShell session and run normally:
 
 ```powershell
 .\teamcity-scripts\create-teamcity-project-rest-api.ps1
 ```
 
-Optional bei weiterhin blockierter Datei:
+Optional if file is still blocked:
 
 ```powershell
 Unblock-File .\teamcity-scripts\create-teamcity-project-rest-api.ps1
@@ -303,32 +303,32 @@ Unblock-File .\teamcity-scripts\create-teamcity-project-rest-api.ps1
 
 ## 2. n8n
 
-## 2.1 Ziel und Umfang
+## 2.1 Scope
 
-Dieser Teil deckt alles rund um n8n im Lab ab:
+This section covers n8n in this lab:
 
-- lokales n8n in Docker
-- n8n Web UI
-- lokale Webhook URL Konfiguration
-- Betrieb und Fehleranalyse per Docker Logs
+- local n8n in Docker
+- n8n web UI
+- local webhook URL configuration
+- operation and troubleshooting via Docker logs
 
-## 2.2 n8n Architektur
+## 2.2 Architecture
 
 Container:
 
 - `n8n`
 
-Image Build:
+Image build:
 
 - `docker/n8n/Dockerfile`
 
-Compose Service:
+Compose service:
 
 - `n8n` in `docker-compose.yml`
 
-## 2.3 n8n Konfiguration
+## 2.3 Configuration
 
-Relevante Werte in `.env`:
+Relevant values in `.env`:
 
 ```env
 N8N_HTTP_PORT=5678
@@ -341,184 +341,169 @@ TEAMCITY_TOKEN=
 N8N_BLOCK_ENV_ACCESS_IN_NODE=false
 ```
 
-Bedeutung:
+Meaning:
 
-- `N8N_HTTP_PORT`: veroeffentlichter Host-Port
-- `N8N_BASE_URL`: Basis-URL fuer Browser Zugriff
-- `N8N_HOST`: Hostname fuer URL-Generierung
-- `N8N_PROTOCOL`: Protokoll (lokal meist `http`)
-- `N8N_TIMEZONE`: Zeitzone
-- `N8N_WEBHOOK_URL`: Basis fuer Webhook-URLs
-- `TEAMCITY_TOKEN`: TeamCity PAT fuer API-Aufrufe aus n8n Workflows
-- `N8N_BLOCK_ENV_ACCESS_IN_NODE`: muss fuer dieses Lab auf `false` stehen, wenn Nodes auf `$env` zugreifen
+- `N8N_HTTP_PORT`: published host port
+- `N8N_BASE_URL`: browser base URL
+- `N8N_HOST`: hostname for generated links
+- `N8N_PROTOCOL`: protocol (usually `http` locally)
+- `N8N_TIMEZONE`: timezone
+- `N8N_WEBHOOK_URL`: base for webhook URLs
+- `TEAMCITY_TOKEN`: TeamCity PAT for API calls from n8n workflows
+- `N8N_BLOCK_ENV_ACCESS_IN_NODE`: must be `false` in this lab if nodes access `$env`
 
-Wichtig zum Token-Verhalten:
+Token behavior:
 
-- Der Wert aus `.env` wird nicht beim Workflow-Import in die JSON-Datei kopiert.
-- n8n liest den Token als Container-Umgebungsvariable beim Start/Recreate.
-- Wenn `TEAMCITY_TOKEN` geaendert wird, muss n8n neu erstellt werden, sonst laeuft der Container weiter mit dem alten Wert.
+- `.env` values are not copied into workflow JSON during import.
+- n8n reads `TEAMCITY_TOKEN` as container env on start/recreate.
+- after changing `TEAMCITY_TOKEN`, recreate n8n or old value stays active.
 
-## 2.4 n8n Erststart
+## 2.4 First Start
 
-n8n oeffnen:
+Open n8n:
 
 - http://localhost:5678
 
-Beim ersten Oeffnen den Owner Account anlegen.
+Create the owner account on first open.
 
-## 2.5 n8n Persistenz
+## 2.5 Persistence
 
-Persistentes Volume:
+Persistent volume:
 
 - `n8n_data`
 
-Vollstaendig sauberer Reset:
+Full clean reset:
 
 ```powershell
 docker compose down -v --remove-orphans
 docker compose up -d --build
 ```
 
-## 2.6 n8n Befehle
+## 2.6 Commands
 
-n8n Logs:
+n8n logs:
 
 ```powershell
 docker compose logs -f n8n
 ```
 
-n8n neu bauen/starten:
+Rebuild/start n8n:
 
 ```powershell
 docker compose up -d --build n8n
 ```
 
-Port Mapping pruefen:
+Check port mapping:
 
 ```powershell
 docker compose port n8n 5678
 ```
 
-## 2.7 n8n Troubleshooting
+## 2.7 Troubleshooting
 
-### 2.7.1 n8n nicht erreichbar
+### 2.7.1 n8n not reachable
 
 ```powershell
 docker compose ps
 docker compose logs --tail=120 n8n
 ```
 
-Port in `.env` pruefen:
+Check in `.env`:
 
 - `N8N_HTTP_PORT`
 
-### 2.7.2 Webhook URL falsch
+### 2.7.2 Webhook URL wrong
 
-- `N8N_WEBHOOK_URL` in `.env` setzen/pruefen
-- n8n neu starten
+- set/check `N8N_WEBHOOK_URL` in `.env`
+- restart n8n
 
 ```powershell
 docker compose up -d --build n8n
 ```
 
-### 2.7.3 TeamCity Token geaendert, aber n8n nutzt alten Wert
+### 2.7.3 TeamCity token changed but n8n still uses old value
 
-- `TEAMCITY_TOKEN` zuerst in `.env` aktualisieren.
-- Danach n8n Container neu erstellen (kein Build notwendig):
+- update `TEAMCITY_TOKEN` in `.env` first
+- recreate n8n container (no build required)
 
 ```powershell
 docker compose up -d --force-recreate n8n
 ```
 
-Hinweis:
+Note:
 
-- Wenn der Workflow `$env.TEAMCITY_TOKEN` nutzt, gilt immer der Env-Stand zum Zeitpunkt des letzten Recreate.
-- Deshalb Token immer vor dem Recreate eintragen.
+- if workflow uses `$env.TEAMCITY_TOKEN`, runtime value is from last recreate.
+- set token before recreate.
 
-### 2.7.4 Recreate gemacht, aber weiterhin 401
+### 2.7.4 Recreate done but still 401
 
-Wenn trotz
+If you still get `401 Unauthorized` after:
 
+```powershell
 docker compose up -d --force-recreate n8n
+```
 
-weiterhin `401 Unauthorized` kommt, ist der Recreate meist korrekt und der Token selbst ungueltig/falsch kopiert/abgelaufen.
+Recreate is usually fine, and the token value itself is invalid/expired/revoked/mis-copied.
 
-Schnellcheck 1 (Container hat denselben Token wie `.env`):
+Quick check 1 (container token equals `.env` token):
 
-1. Lokalen `.env` Token und Container-Token vergleichen (Laenge oder Hash, ohne Secret-Ausgabe).
-2. Wenn beide identisch sind, ist das Problem nicht mehr die Uebernahme in den Container.
+1. Compare local `.env` token and container token by length or hash.
+2. If they match, propagation is not the issue.
 
-Schnellcheck 2 (Token gegen TeamCity API pruefen):
+Quick check 2 (validate token directly against TeamCity API):
 
+```powershell
 Invoke-WebRequest -UseBasicParsing -Method Get -Uri http://localhost:8111/app/rest/projects -Headers @{ Authorization = "Bearer <TOKEN>"; Accept = "application/json" }
+```
 
-Erwartung:
+Expected:
 
-- HTTP 200: Token gueltig
-- HTTP 401: Token ungueltig, widerrufen, abgelaufen oder ohne ausreichende Rechte
+- HTTP 200: token valid
+- HTTP 401: token invalid/revoked/expired/insufficient rights
 
-Hinweis:
+## 2.8 Planned Implementation: Custom Chat via Webhook API
 
-- Typische Copy-Paste-Probleme sind ein falsches erstes Zeichen oder abgeschnittener Token.
+Note: this section documents planned architecture only.
 
-## 2.8 Geplante Umsetzung: Eigener Chat per Webhook API
+Target:
 
-Hinweis: Dieser Abschnitt beschreibt die geplante Zielarchitektur. Aktuell wird hier nur dokumentiert, nichts davon ist in diesem Schritt verpflichtend umgesetzt.
+- use a custom chat client (web/app/service) calling n8n via HTTP API
+- n8n processes request, calls Ollama, returns defined JSON response
 
-Zielbild:
+### 2.8.1 Endpoint and Port Mapping
 
-- Statt Chat Trigger soll ein eigener Chat-Client (Web, App oder Service) n8n per HTTP API aufrufen.
-- n8n verarbeitet die Anfrage, ruft Ollama auf und liefert eine definierte JSON-Response zurueck.
+With `N8N_HTTP_PORT=5678` locally:
 
-### 2.8.1 Endpoint und Port-Zuweisung
-
-Ausgehend von `N8N_HTTP_PORT=5678` und lokaler Nutzung:
-
-- Test Endpoint (nur im n8n Editor/Execute Kontext):
+- test endpoint (editor/execute context):
   - `http://localhost:5678/webhook-test/<chat-path>`
-- Produktiv Endpoint (Workflow aktiv):
+- production endpoint (active workflow):
   - `http://localhost:5678/webhook/<chat-path>`
 
-Pfad-Zuweisung:
+Path mapping:
 
-- `<chat-path>` wird direkt im Webhook Node in n8n gesetzt, z. B. `my-chat`.
-- Daraus werden:
+- `<chat-path>` is set in n8n Webhook node, e.g. `my-chat`
+- examples:
   - `http://localhost:5678/webhook-test/my-chat`
   - `http://localhost:5678/webhook/my-chat`
 
-Aufruf aus anderem Docker-Container im selben Compose-Netz:
+From another container in same Compose network:
 
 - `http://n8n:5678/webhook/<chat-path>`
 
-### 2.8.1.1 Woher kommen die Namen webhook, webhook-test und chat-path?
+### 2.8.1.1 Where do webhook, webhook-test, and chat-path come from?
 
-- `webhook` und `webhook-test` sind n8n Standard-Endpunktnamen.
-- Diese beiden Basisrouten kommen aus der n8n Server-Konfiguration, nicht aus `docker-compose.yml`.
-- `chat-path` (bzw. allgemein der Pfadanteil hinter der Basisroute) wird im jeweiligen Webhook Node im Feld `Path` festgelegt.
+- `webhook` and `webhook-test` are n8n default base routes
+- base routes come from n8n server configuration, not from `docker-compose.yml`
+- `chat-path` is set in Webhook node `Path`
 
-Beispiel:
+Defaults are configurable via:
 
-- Node `Path`: `my-chat`
-- Test URL: `http://localhost:5678/webhook-test/my-chat`
-- Produktiv URL: `http://localhost:5678/webhook/my-chat`
+- `N8N_ENDPOINT_WEBHOOK`
+- `N8N_ENDPOINT_WEBHOOK_TEST`
 
-Wichtig zur Abgrenzung:
+### 2.8.2 Planned Request/Response Contract
 
-- `docker-compose.yml` legt Port-Mapping und Erreichbarkeit fest (z. B. `5678:5678`).
-- n8n legt das URL-Schema der Webhook-Routen fest.
-- Der konkrete Endpunktname nach der Basisroute wird im Node gesetzt.
-
-Konfigurierbarkeit der Basisrouten:
-
-- Standardmaessig verwendet n8n `webhook` und `webhook-test`.
-- Diese Werte sind nicht hart fixiert und koennen per Umgebungsvariablen angepasst werden:
-  - `N8N_ENDPOINT_WEBHOOK`
-  - `N8N_ENDPOINT_WEBHOOK_TEST`
-- Wenn diese Variablen gesetzt sind, muessen Clients die angepassten Basisrouten verwenden.
-
-### 2.8.2 Geplanter Request/Response Vertrag
-
-Geplanter Request (Client -> n8n):
+Planned request:
 
 ```json
 {
@@ -528,7 +513,7 @@ Geplanter Request (Client -> n8n):
 }
 ```
 
-Geplante Response (n8n -> Client):
+Planned response:
 
 ```json
 {
@@ -542,52 +527,52 @@ Geplante Response (n8n -> Client):
 }
 ```
 
-### 2.8.3 Geplanter Workflow-Ablauf
+### 2.8.3 Planned Workflow Flow
 
-1. Webhook Trigger empfaengt JSON Request.
-2. Code/Set Node validiert `message` und normalisiert Felder.
-3. HTTP Request Node ruft `http://ollama:11434/api/generate` auf.
-4. Code Node mappt auf API-Response-Schema.
-5. Respond to Webhook Node gibt JSON an Client zurueck.
+1. Webhook trigger receives JSON request.
+2. Code/Set node validates `message` and normalizes fields.
+3. HTTP Request node calls `http://ollama:11434/api/generate`.
+4. Code node maps output to API response schema.
+5. Respond to Webhook node returns JSON to client.
 
-### 2.8.4 Geplante Betriebsregeln
+### 2.8.4 Planned Operating Rules
 
-- Test mit `webhook-test`, produktiver Betrieb mit `webhook`.
-- In Produktion nur aktivierte Workflows verwenden.
-- Webhook Endpoint absichern (Token/JWT/Reverse Proxy), nicht offen im Internet betreiben.
-- `N8N_WEBHOOK_URL` konsistent zur externen Erreichbarkeit setzen.
+- use `webhook-test` for testing, `webhook` for production
+- use active workflows only in production
+- secure webhook endpoint (token/JWT/reverse proxy), do not expose openly
+- keep `N8N_WEBHOOK_URL` aligned with externally reachable URL
 
 ## 3. Ollama
 
-## 3.1 Ziel und Umfang
+## 3.1 Scope
 
-Dieser Teil deckt alles rund um Ollama im Lab ab:
+This section covers Ollama in this lab:
 
-- lokale LLM API in Docker
-- minimales Modell fuer End-to-End Tests
-- Zugriff aus n8n ueber internes Docker-Netzwerk
+- local LLM API in Docker
+- small model for end-to-end testing
+- access from n8n via internal Docker network
 
-## 3.2 Ollama Architektur
+## 3.2 Architecture
 
 Container:
 
 - `ollama`
 
-Image Build:
+Image build:
 
 - `docker/ollama/Dockerfile`
 
-Compose Service:
+Compose service:
 
 - `ollama` in `docker-compose.yml`
 
-Netzwerk-Zugriff aus n8n:
+Network access from n8n:
 
 - `http://ollama:11434`
 
-## 3.3 Ollama Konfiguration
+## 3.3 Configuration
 
-Relevante Werte in `.env`:
+Relevant values in `.env`:
 
 ```env
 OLLAMA_HTTP_PORT=11434
@@ -595,114 +580,114 @@ OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=qwen2.5:1.5b
 ```
 
-Bedeutung:
+Meaning:
 
-- `OLLAMA_HTTP_PORT`: veroeffentlichter Host-Port der Ollama API
-- `OLLAMA_BASE_URL`: Basis-URL fuer Host-seitige API Tests
-- `OLLAMA_MODEL`: kleines, stabileres Testmodell fuer Workflows
+- `OLLAMA_HTTP_PORT`: published host port for Ollama API
+- `OLLAMA_BASE_URL`: base URL for host-side API tests
+- `OLLAMA_MODEL`: stable small test model for workflows
 
-## 3.4 Ollama Erststart
+## 3.4 First Start
 
-Ollama starten:
+Start Ollama:
 
 ```powershell
 docker compose up -d --build ollama
 ```
 
-Modell ziehen:
+Pull model:
 
 ```powershell
 docker compose exec ollama ollama pull qwen2.5:1.5b
 ```
 
-API kurz pruefen:
+Quick API check:
 
 ```powershell
 docker compose exec ollama ollama list
 ```
 
-## 3.5 Ollama Persistenz
+## 3.5 Persistence
 
-Persistentes Volume:
+Persistent volume:
 
 - `ollama_data`
 
-## 3.6 Ollama Befehle
+## 3.6 Commands
 
-Ollama Logs:
+Logs:
 
 ```powershell
 docker compose logs -f ollama
 ```
 
-Modelle anzeigen:
+List models:
 
 ```powershell
 docker compose exec ollama ollama list
 ```
 
-Smoke-Test Prompt:
+Smoke prompt:
 
 ```powershell
-docker compose exec ollama ollama run qwen2.5:1.5b "Antworte mit OK"
+docker compose exec ollama ollama run qwen2.5:1.5b "Respond with OK"
 ```
 
-n8n Workflow-Datei fuer Test:
+n8n workflow for test:
 
 - `n8n-workflows/ollama-smoke-test.json`
 
-## 3.7 Ollama Troubleshooting
+## 3.7 Troubleshooting
 
-### 3.7.1 API nicht erreichbar
+### 3.7.1 API not reachable
 
 ```powershell
 docker compose ps
 docker compose logs --tail=120 ollama
 ```
 
-Port in `.env` pruefen:
+Check in `.env`:
 
 - `OLLAMA_HTTP_PORT`
 
-### 3.7.2 Modell nicht gefunden
+### 3.7.2 Model not found
 
-- Modell im Container ziehen: `docker compose exec ollama ollama pull qwen2.5:1.5b`
-- Danach Workflow in n8n erneut ausfuehren
+- pull model in container: `docker compose exec ollama ollama pull qwen2.5:1.5b`
+- run workflow again in n8n
 
-## 3.8 Ollama Einrichtung Schritt fuer Schritt
+## 3.8 Step-by-Step Setup
 
-1. Ollama Service starten:
+1. Start Ollama service:
 
 ```powershell
 docker compose up -d --build ollama
 ```
 
-2. Modell laden (einmalig):
+2. Pull model (one-time):
 
 ```powershell
 docker compose exec ollama ollama pull qwen2.5:1.5b
 ```
 
-3. Modell-Download pruefen:
+3. Verify model:
 
 ```powershell
 docker compose exec ollama ollama list
 ```
 
-4. Kurzen Prompt-Test direkt im Container ausfuehren:
+4. Run a short prompt directly in container:
 
 ```powershell
-docker compose exec ollama ollama run qwen2.5:1.5b "Antworte mit OK"
+docker compose exec ollama ollama run qwen2.5:1.5b "Respond with OK"
 ```
 
-5. n8n-Testworkflow importieren und starten:
+5. Import and run n8n smoke workflow:
 
-- Datei: `n8n-workflows/ollama-smoke-test.json`
-- In n8n importieren und den Manual Trigger ausfuehren
+- file: `n8n-workflows/ollama-smoke-test.json`
+- import in n8n and execute Manual Trigger
 
 ## 4. Repository
 
-## 4.1 Inhalt und Struktur
+## 4.1 Contents and Structure
 
 - `docker-compose.yml`
 - `docker/teamcity-server/Dockerfile`
@@ -714,26 +699,31 @@ docker compose exec ollama ollama run qwen2.5:1.5b "Antworte mit OK"
 - `LICENSE`
 - `THIRD_PARTY_NOTICES.md`
 
-## 4.2 Plattform Kompatibilitaet
+## 4.2 Platform Compatibility
 
-Unterstuetzt:
+Supported:
 
 - Windows
 - Linux
 - macOS
 
-Empfohlene Shell:
+Recommended shell:
 
 - `pwsh`
 
-## 4.3 Hinweise fuer GitHub
+## 4.3 GitHub Notes
 
-- `.env` kann sensible Tokens enthalten
-- `reports/` kann sensible Request/Response Daten enthalten
-- vor Veroeffentlichung keine Secrets committen
+- `.env` may contain sensitive tokens
+- `reports/` may contain sensitive request/response data
+- do not commit secrets before publishing
 
-## 4.4 Rechtliches
+## 4.4 Legal
 
-- Lizenz fuer Repo-Inhalte: MIT (`LICENSE`)
-- TeamCity ist Drittsoftware von JetBrains
-- Hinweise zu Drittsoftware: `THIRD_PARTY_NOTICES.md`
+- License for repository-owned content: MIT (`LICENSE`)
+- MIT applies to repository-owned files only (scripts/config/docs), not third-party software
+- Third-party software in this lab (including TeamCity, n8n, Ollama) remains under its own licenses and terms
+- Third-party notice file: `THIRD_PARTY_NOTICES.md`
+- Public Git publishing is generally possible if:
+  - no secrets are published
+  - third-party notices remain in place
+  - third-party license terms are respected
