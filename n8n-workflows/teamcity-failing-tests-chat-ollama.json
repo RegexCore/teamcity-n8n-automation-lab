@@ -1,0 +1,226 @@
+﻿{
+    "name":  "TeamCity Failing Tests + Chat to Ollama",
+    "nodes":  [
+                  {
+                      "parameters":  {
+                                         "public":  false,
+                                         "options":  {
+                                                         "responseMode":  "whenLastNodeFinishes"
+                                                     }
+                                     },
+                      "id":  "1",
+                      "name":  "Chat Trigger",
+                      "type":  "@n8n/n8n-nodes-langchain.chatTrigger",
+                      "typeVersion":  1.1,
+                      "position":  [
+                                       180,
+                                       280
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "var question = (($json.chatInput || \u0027\u0027) + \u0027\u0027).trim();\n\nvar teamcityBaseUrl = \u0027http://teamcity-server:8111\u0027;\nvar teamcityToken = \u0027eyJ0eXAiOiAiVENWMiJ9.dTNOOTdqb3dwT2lyaXpMbENKNTE1dHcxOWxT.YWYzZjhiNzAtZDUxYy00N2RmLWJjNTgtM2NhMjgzNDk5NDNi\u0027;\n\nvar llmSystemPrompt = \u0027You are a CI/CD troubleshooting assistant. Answer in English. Use TeamCity failing test context when available.\u0027;\n\nreturn [\n  {\n    json: {\n      mode: \u0027chat-teamcity-failing-tests\u0027,\n      input_question: question,\n      teamcity: {\n        baseUrl: teamcityBaseUrl,\n        token: teamcityToken\n      },\n      llm: {\n        endpoint: \u0027http://ollama:11434/api/generate\u0027,\n        model: \u0027qwen2.5:1.5b\u0027,\n        stream: false,\n        options: {\n          temperature: 0.1,\n          top_p: 0.9,\n          num_predict: 300\n        },\n        system_prompt: llmSystemPrompt\n      }\n    }\n  }\n];"
+                                     },
+                      "id":  "2",
+                      "name":  "Build Chat Request",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       430,
+                                       280
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "GET",
+                                         "url":  "={{ $json.teamcity.baseUrl + \u0027/app/rest/buildTypes\u0027 }}",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "Authorization",
+                                                                                         "value":  "={{ \u0027Bearer \u0027 + ($json.teamcity.token || \u0027__TEAMCITY_TOKEN__\u0027) }}"
+                                                                                     },
+                                                                                     {
+                                                                                         "name":  "Accept",
+                                                                                         "value":  "application/json"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "sendQuery":  true,
+                                         "queryParameters":  {
+                                                                 "parameters":  [
+                                                                                    {
+                                                                                        "value":  "buildType(id,name,projectName,webUrl,paused)",
+                                                                                        "name":  "fields"
+                                                                                    }
+                                                                                ]
+                                                             },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "3",
+                      "name":  "TeamCity Failing Tests API",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4,
+                      "position":  [
+                                       710,
+                                       280
+                                   ],
+                      "retryOnFail":  true,
+                      "maxTries":  3,
+                      "waitBetweenTries":  2000,
+                      "continueOnFail":  true
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "var reqItem = $items(\u0027Build Chat Request\u0027)[0] || {};\nvar req = reqItem.json || {};\n\nvar src = $json || {};\nvar apiErr = src.error || null;\n\nvar raw = src.body;\nvar parsed = null;\n\nif (raw \u0026\u0026 typeof raw === \u0027object\u0027) {\n  parsed = raw;\n} else if (typeof raw === \u0027string\u0027) {\n  try {\n    parsed = JSON.parse(raw);\n  } catch (e) {\n    parsed = null;\n  }\n} else {\n  parsed = src;\n}\n\nif (!parsed || typeof parsed !== \u0027object\u0027) {\n  parsed = {};\n}\n\nvar tcError = apiErr || parsed.error || null;\n\nvar allBuildTypes = Array.isArray(parsed.buildType) ? parsed.buildType : [];\nvar buildTypesForPrompt = allBuildTypes.slice(0, 20).map(function (b, idx) {\n  return {\n    index: idx + 1,\n    buildTypeId: b.id || null,\n    buildTypeName: b.name || null,\n    projectName: b.projectName || null,\n    paused: typeof b.paused !== \u0027undefined\u0027 ? b.paused : null,\n    webUrl: b.webUrl || null\n  };\n});\n\nvar contextBlock = \u0027\u0027;\nif (tcError) {\n  contextBlock = \u0027TeamCity API error: \u0027 + JSON.stringify(tcError);\n} else if (!buildTypesForPrompt.length) {\n  contextBlock = \u0027No build configurations found in TeamCity.\u0027;\n} else {\n  contextBlock = JSON.stringify(buildTypesForPrompt, null, 2);\n}\n\nvar baseUrl = req.teamcity \u0026\u0026 req.teamcity.baseUrl ? req.teamcity.baseUrl : \u0027\u0027;\n\nvar prompt = [\n  \u0027User question:\u0027,\n  req.input_question || \u0027\u0027,\n  \u0027\u0027,\n  \u0027TeamCity API base URL: \u0027 + baseUrl,\n  \u0027Build configurations context (latest up to 20):\u0027,\n  contextBlock,\n  \u0027\u0027,\n  \u0027Task:\u0027,\n  \u0027- Answer the user question using the TeamCity context.\u0027,\n  \u0027- If there are no build configurations or API errors, explain what to check next.\u0027\n].join(\u0027\\n\u0027);\n\nreturn [\n  {\n    json: {\n      mode: req.mode || \u0027chat-teamcity-buildtypes\u0027,\n      input_question: req.input_question || \u0027\u0027,\n      teamcity_context: {\n        baseUrl: baseUrl || null,\n        build_types_count: allBuildTypes.length,\n        build_types_sample: buildTypesForPrompt,\n        api_error: tcError\n      },\n      llm_request: {\n        endpoint: req.llm \u0026\u0026 req.llm.endpoint ? req.llm.endpoint : \u0027http://ollama:11434/api/generate\u0027,\n        model: req.llm \u0026\u0026 req.llm.model ? req.llm.model : \u0027qwen2.5:1.5b\u0027,\n        system_prompt: req.llm \u0026\u0026 req.llm.system_prompt ? req.llm.system_prompt : \u0027\u0027,\n        prompt: prompt,\n        stream: req.llm \u0026\u0026 typeof req.llm.stream !== \u0027undefined\u0027 ? req.llm.stream : false,\n        options: req.llm \u0026\u0026 req.llm.options ? req.llm.options : {\n          temperature: 0.1,\n          top_p: 0.9,\n          num_predict: 300\n        }\n      }\n    }\n  }\n];"
+                                     },
+                      "id":  "4",
+                      "name":  "Build Ollama Prompt",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       990,
+                                       280
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "POST",
+                                         "url":  "http://ollama:11434/api/generate",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "Content-Type",
+                                                                                         "value":  "application/json"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "sendBody":  true,
+                                         "bodyParameters":  {
+                                                                "parameters":  [
+                                                                                   {
+                                                                                       "name":  "model",
+                                                                                       "value":  "={{ $json.llm_request.model }}"
+                                                                                   },
+                                                                                   {
+                                                                                       "name":  "prompt",
+                                                                                       "value":  "={{ $json.llm_request.prompt }}"
+                                                                                   },
+                                                                                   {
+                                                                                       "name":  "system",
+                                                                                       "value":  "={{ $json.llm_request.system_prompt }}"
+                                                                                   },
+                                                                                   {
+                                                                                       "name":  "stream",
+                                                                                       "value":  "={{ $json.llm_request.stream }}"
+                                                                                   },
+                                                                                   {
+                                                                                       "name":  "options",
+                                                                                       "value":  "={{ $json.llm_request.options }}"
+                                                                                   }
+                                                                               ]
+                                                            },
+                                         "options":  {
+                                                         "response":  {
+                                                                          "response":  {
+                                                                                           "responseFormat":  "json"
+                                                                                       }
+                                                                      }
+                                                     }
+                                     },
+                      "id":  "5",
+                      "name":  "Call Ollama",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4,
+                      "position":  [
+                                       1260,
+                                       280
+                                   ],
+                      "retryOnFail":  true,
+                      "maxTries":  3,
+                      "waitBetweenTries":  2000
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "var reqItem = $items(\u0027Build Ollama Prompt\u0027)[0] || {};\nvar req = reqItem.json || {};\n\nvar src = $json || {};\nvar body = src.body \u0026\u0026 typeof src.body === \u0027object\u0027 ? src.body : src;\nvar responseText = String(body.response || \u0027\u0027);\n\nvar teamcityContext = req.teamcity_context || {};\nvar llmRequest = req.llm_request || {};\n\nreturn [\n  {\n    json: {\n      mode: req.mode || null,\n      input_question: req.input_question || null,\n      teamcity_api_base: teamcityContext.baseUrl != null ? teamcityContext.baseUrl : null,\n      build_types_count: teamcityContext.build_types_count != null ? teamcityContext.build_types_count : 0,\n      build_types_sample: Array.isArray(teamcityContext.build_types_sample) ? teamcityContext.build_types_sample : [],\n      teamcity_api_error: teamcityContext.api_error || null,\n      llm_request: llmRequest,\n      llm_response: responseText,\n      text: responseText,\n      output: responseText,\n      model: body.model || llmRequest.model || null,\n      done: typeof body.done !== \u0027undefined\u0027 ? body.done : null,\n      total_duration: typeof body.total_duration !== \u0027undefined\u0027 ? body.total_duration : null\n    }\n  }\n];"
+                                     },
+                      "id":  "6",
+                      "name":  "Select Output",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       1530,
+                                       280
+                                   ]
+                  }
+              ],
+    "connections":  {
+                        "Chat Trigger":  {
+                                             "main":  [
+                                                          [
+                                                              {
+                                                                  "node":  "Build Chat Request",
+                                                                  "type":  "main",
+                                                                  "index":  0
+                                                              }
+                                                          ]
+                                                      ]
+                                         },
+                        "Build Chat Request":  {
+                                                   "main":  [
+                                                                [
+                                                                    {
+                                                                        "node":  "TeamCity Failing Tests API",
+                                                                        "type":  "main",
+                                                                        "index":  0
+                                                                    }
+                                                                ]
+                                                            ]
+                                               },
+                        "TeamCity Failing Tests API":  {
+                                                           "main":  [
+                                                                        [
+                                                                            {
+                                                                                "node":  "Build Ollama Prompt",
+                                                                                "type":  "main",
+                                                                                "index":  0
+                                                                            }
+                                                                        ]
+                                                                    ]
+                                                       },
+                        "Build Ollama Prompt":  {
+                                                    "main":  [
+                                                                 [
+                                                                     {
+                                                                         "node":  "Call Ollama",
+                                                                         "type":  "main",
+                                                                         "index":  0
+                                                                     }
+                                                                 ]
+                                                             ]
+                                                },
+                        "Call Ollama":  {
+                                            "main":  [
+                                                         [
+                                                             {
+                                                                 "node":  "Select Output",
+                                                                 "type":  "main",
+                                                                 "index":  0
+                                                             }
+                                                         ]
+                                                     ]
+                                        }
+                    },
+    "active":  false,
+    "settings":  {
+
+                 },
+    "pinData":  {
+
+                },
+    "versionId":  "1"
+}

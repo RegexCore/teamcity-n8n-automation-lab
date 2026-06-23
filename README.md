@@ -19,6 +19,7 @@ Lokale Testumgebung mit Docker Compose für TeamCity (REST + MCP Testflows) und 
 - [1.12 TeamCity Persistenz](#112-teamcity-persistenz)
 - [1.13 TeamCity Befehle](#113-teamcity-befehle)
 - [1.14 TeamCity Troubleshooting](#114-teamcity-troubleshooting)
+- [1.14.6 PowerShell Skripte blockiert](#1146-powershell-skripte-blockiert)
 - [2. n8n](#2-n8n)
 - [2.1 Ziel und Umfang](#21-ziel-und-umfang)
 - [2.2 n8n Architektur](#22-n8n-architektur)
@@ -269,6 +270,36 @@ docker compose logs --tail=120 teamcity-server
 Port in `.env` pruefen:
 
 - `TEAMCITY_HTTP_PORT`
+
+### 1.14.6 PowerShell Skripte blockiert
+
+Fehlerbild:
+
+- `Die Ausfuehrung von Skripts auf diesem System ist deaktiviert`
+
+Einmalig fuer einen Lauf (empfohlen fuer schnellen Test):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\teamcity-scripts\create-teamcity-project-rest-api.ps1
+```
+
+Dauerhaft fuer den aktuellen Benutzer:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+```
+
+Danach neue PowerShell Session oeffnen und Skript normal starten:
+
+```powershell
+.\teamcity-scripts\create-teamcity-project-rest-api.ps1
+```
+
+Optional bei weiterhin blockierter Datei:
+
+```powershell
+Unblock-File .\teamcity-scripts\create-teamcity-project-rest-api.ps1
+```
 
 ## 2. n8n
 

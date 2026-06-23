@@ -46,6 +46,8 @@ services:
       N8N_PROTOCOL: "${N8N_PROTOCOL:-http}"
       WEBHOOK_URL: "${N8N_WEBHOOK_URL:-http://localhost:5678/}"
       GENERIC_TIMEZONE: "${N8N_TIMEZONE:-Europe/Berlin}"
+      TEAMCITY_TOKEN: "${TEAMCITY_TOKEN:-}"
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "${N8N_BLOCK_ENV_ACCESS_IN_NODE:-false}"
     volumes:
       - n8n_data:/home/node/.n8n
 
