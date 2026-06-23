@@ -1,5 +1,5 @@
 ﻿{
-    "name":  "TeamCity Failing Tests + Chat to Ollama",
+    "name":  "TeamCity Build Types + Chat to Ollama",
     "nodes":  [
                   {
                       "parameters":  {
@@ -19,7 +19,7 @@
                   },
                   {
                       "parameters":  {
-                                         "jsCode":  "var question = (($json.chatInput || \u0027\u0027) + \u0027\u0027).trim();\n\nvar teamcityBaseUrl = \u0027http://teamcity-server:8111\u0027;\nvar teamcityToken = \u0027eyJ0eXAiOiAiVENWMiJ9.dTNOOTdqb3dwT2lyaXpMbENKNTE1dHcxOWxT.YWYzZjhiNzAtZDUxYy00N2RmLWJjNTgtM2NhMjgzNDk5NDNi\u0027;\n\nvar llmSystemPrompt = \u0027You are a CI/CD troubleshooting assistant. Answer in English. Use TeamCity failing test context when available.\u0027;\n\nreturn [\n  {\n    json: {\n      mode: \u0027chat-teamcity-failing-tests\u0027,\n      input_question: question,\n      teamcity: {\n        baseUrl: teamcityBaseUrl,\n        token: teamcityToken\n      },\n      llm: {\n        endpoint: \u0027http://ollama:11434/api/generate\u0027,\n        model: \u0027qwen2.5:1.5b\u0027,\n        stream: false,\n        options: {\n          temperature: 0.1,\n          top_p: 0.9,\n          num_predict: 300\n        },\n        system_prompt: llmSystemPrompt\n      }\n    }\n  }\n];"
+                                         "jsCode":  "var question = (($json.chatInput || \u0027\u0027) + \u0027\u0027).trim();\n\nvar teamcityBaseUrl = \u0027http://teamcity-server:8111\u0027;\nvar teamcityToken = \u0027__TEAMCITY_TOKEN__\u0027;\n\nvar llmSystemPrompt = \u0027You are a CI/CD troubleshooting assistant. Answer in English. Use TeamCity build configuration context when available.\u0027;\n\nreturn [\n  {\n    json: {\n      mode: \u0027chat-teamcity-buildtypes\u0027,\n      input_question: question,\n      teamcity: {\n        baseUrl: teamcityBaseUrl,\n        token: teamcityToken\n      },\n      llm: {\n        endpoint: \u0027http://ollama:11434/api/generate\u0027,\n        model: \u0027qwen2.5:1.5b\u0027,\n        stream: false,\n        options: {\n          temperature: 0.1,\n          top_p: 0.9,\n          num_predict: 300\n        },\n        system_prompt: llmSystemPrompt\n      }\n    }\n  }\n];"
                                      },
                       "id":  "2",
                       "name":  "Build Chat Request",
@@ -39,7 +39,7 @@
                                                                   "parameters":  [
                                                                                      {
                                                                                          "name":  "Authorization",
-                                                                                         "value":  "={{ \u0027Bearer \u0027 + ($json.teamcity.token || \u0027__TEAMCITY_TOKEN__\u0027) }}"
+                                                                                         "value":  "={{ \u0027Bearer \u0027 + ($env.TEAMCITY_TOKEN || $json.teamcity.token || \u0027__TEAMCITY_TOKEN__\u0027) }}"
                                                                                      },
                                                                                      {
                                                                                          "name":  "Accept",
@@ -61,7 +61,7 @@
                                                      }
                                      },
                       "id":  "3",
-                      "name":  "TeamCity Failing Tests API",
+                      "name":  "TeamCity Build Types API",
                       "type":  "n8n-nodes-base.httpRequest",
                       "typeVersion":  4,
                       "position":  [
@@ -174,14 +174,14 @@
                                                    "main":  [
                                                                 [
                                                                     {
-                                                                        "node":  "TeamCity Failing Tests API",
+                                                                        "node":  "TeamCity Build Types API",
                                                                         "type":  "main",
                                                                         "index":  0
                                                                     }
                                                                 ]
                                                             ]
                                                },
-                        "TeamCity Failing Tests API":  {
+                        "TeamCity Build Types API":  {
                                                            "main":  [
                                                                         [
                                                                             {

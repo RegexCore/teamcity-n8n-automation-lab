@@ -337,6 +337,8 @@ N8N_HOST=localhost
 N8N_PROTOCOL=http
 N8N_TIMEZONE=Europe/Berlin
 N8N_WEBHOOK_URL=http://localhost:5678/
+TEAMCITY_TOKEN=
+N8N_BLOCK_ENV_ACCESS_IN_NODE=false
 ```
 
 Bedeutung:
@@ -347,6 +349,14 @@ Bedeutung:
 - `N8N_PROTOCOL`: Protokoll (lokal meist `http`)
 - `N8N_TIMEZONE`: Zeitzone
 - `N8N_WEBHOOK_URL`: Basis fuer Webhook-URLs
+- `TEAMCITY_TOKEN`: TeamCity PAT fuer API-Aufrufe aus n8n Workflows
+- `N8N_BLOCK_ENV_ACCESS_IN_NODE`: muss fuer dieses Lab auf `false` stehen, wenn Nodes auf `$env` zugreifen
+
+Wichtig zum Token-Verhalten:
+
+- Der Wert aus `.env` wird nicht beim Workflow-Import in die JSON-Datei kopiert.
+- n8n liest den Token als Container-Umgebungsvariable beim Start/Recreate.
+- Wenn `TEAMCITY_TOKEN` geaendert wird, muss n8n neu erstellt werden, sonst laeuft der Container weiter mit dem alten Wert.
 
 ## 2.4 n8n Erststart
 
@@ -410,6 +420,46 @@ Port in `.env` pruefen:
 ```powershell
 docker compose up -d --build n8n
 ```
+
+### 2.7.3 TeamCity Token geaendert, aber n8n nutzt alten Wert
+
+- `TEAMCITY_TOKEN` zuerst in `.env` aktualisieren.
+- Danach n8n Container neu erstellen (kein Build notwendig):
+
+```powershell
+docker compose up -d --force-recreate n8n
+```
+
+Hinweis:
+
+- Wenn der Workflow `$env.TEAMCITY_TOKEN` nutzt, gilt immer der Env-Stand zum Zeitpunkt des letzten Recreate.
+- Deshalb Token immer vor dem Recreate eintragen.
+
+### 2.7.4 Recreate gemacht, aber weiterhin 401
+
+Wenn trotz
+
+docker compose up -d --force-recreate n8n
+
+weiterhin `401 Unauthorized` kommt, ist der Recreate meist korrekt und der Token selbst ungueltig/falsch kopiert/abgelaufen.
+
+Schnellcheck 1 (Container hat denselben Token wie `.env`):
+
+1. Lokalen `.env` Token und Container-Token vergleichen (Laenge oder Hash, ohne Secret-Ausgabe).
+2. Wenn beide identisch sind, ist das Problem nicht mehr die Uebernahme in den Container.
+
+Schnellcheck 2 (Token gegen TeamCity API pruefen):
+
+Invoke-WebRequest -UseBasicParsing -Method Get -Uri http://localhost:8111/app/rest/projects -Headers @{ Authorization = "Bearer <TOKEN>"; Accept = "application/json" }
+
+Erwartung:
+
+- HTTP 200: Token gueltig
+- HTTP 401: Token ungueltig, widerrufen, abgelaufen oder ohne ausreichende Rechte
+
+Hinweis:
+
+- Typische Copy-Paste-Probleme sind ein falsches erstes Zeichen oder abgeschnittener Token.
 
 ## 2.8 Geplante Umsetzung: Eigener Chat per Webhook API
 
