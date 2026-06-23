@@ -4,6 +4,7 @@ Local Docker Compose lab for TeamCity (REST + MCP test flows), n8n (UI + chat/we
 
 ## Table of Contents
 
+- [0. Overall Architecture](#0-overall-architecture)
 - [1. TeamCity](#1-teamcity)
 - [1.1 Scope](#11-scope)
 - [1.2 Architecture](#12-architecture)
@@ -43,6 +44,43 @@ Local Docker Compose lab for TeamCity (REST + MCP test flows), n8n (UI + chat/we
 - [4.2 Platform Compatibility](#42-platform-compatibility)
 - [4.3 GitHub Notes](#43-github-notes)
 - [4.4 Legal](#44-legal)
+
+## 0. Overall Architecture
+
+End-to-end runtime flow for a single user request in n8n.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as User
+    participant N8N as n8n UI or API :5678
+    participant FLOW as n8n Workflow Logic
+    participant TC as TeamCity REST API :8111
+    participant OLL as Ollama API :11434
+
+    User->>N8N: Send input message
+    N8N->>FLOW: Trigger workflow
+
+    opt Optional TeamCity context lookup
+      FLOW->>TC: Request build context (Bearer TEAMCITY_TOKEN)
+      TC-->>FLOW: Return TeamCity data
+    end
+
+    FLOW->>OLL: Send prompt
+    OLL-->>FLOW: Return generated answer
+
+    FLOW->>N8N: Build final response payload
+    N8N-->>User: Return chat or API response
+```
+
+Chronological flow summary:
+
+1. User sends input into the n8n chat or webhook trigger.
+2. The workflow logic processes the request.
+3. Optional TeamCity REST call for build context (3a) and the Ollama prompt (3b).
+4. Ollama returns the generated answer.
+5. The response formatter builds the final payload.
+6. The response is returned to the user.
 
 ## 1. TeamCity
 
@@ -314,6 +352,21 @@ This section covers n8n in this lab:
 
 ## 2.2 Architecture
 
+```mermaid
+flowchart LR
+  U[User Browser] -->|http://localhost:5678| N8NUI[n8n UI]
+  N8NUI --> WF[n8n Workflows]
+
+  subgraph N8NContainer[n8n Container]
+    WF --> HTTP[HTTP Request Nodes]
+    WF --> CHAT[Chat/Webhook Triggers]
+    ENV[Container Env] --> WF
+  end
+
+  HTTP -->|Bearer TEAMCITY_TOKEN| TCREST[TeamCity REST API]
+  HTTP -->|POST /api/generate| OLLAMA[Ollama API]
+```
+
 Container:
 
 - `n8n`
@@ -553,6 +606,17 @@ This section covers Ollama in this lab:
 - access from n8n via internal Docker network
 
 ## 3.2 Architecture
+
+```mermaid
+flowchart LR
+  N8N[n8n Container] -->|http://ollama:11434/api/generate| OAPI[Ollama API]
+  U[Host User] -->|http://localhost:11434| OAPI
+
+  subgraph OLLAMAContainer[Ollama Container]
+    OAPI --> MODEL[qwen2.5:1.5b]
+    MODEL --> STORE[ollama_data volume]
+  end
+```
 
 Container:
 
