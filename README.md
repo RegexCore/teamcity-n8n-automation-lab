@@ -27,6 +27,7 @@ Lokale Testumgebung mit Docker Compose für TeamCity (REST + MCP Testflows) und 
 - [2.5 n8n Persistenz](#25-n8n-persistenz)
 - [2.6 n8n Befehle](#26-n8n-befehle)
 - [2.7 n8n Troubleshooting](#27-n8n-troubleshooting)
+- [2.8 Geplante Umsetzung: Eigener Chat per Webhook API](#28-geplante-umsetzung-eigener-chat-per-webhook-api)
 - [3. Ollama](#3-ollama)
 - [3.1 Ziel und Umfang](#31-ziel-und-umfang)
 - [3.2 Ollama Architektur](#32-ollama-architektur)
@@ -378,6 +379,102 @@ Port in `.env` pruefen:
 ```powershell
 docker compose up -d --build n8n
 ```
+
+## 2.8 Geplante Umsetzung: Eigener Chat per Webhook API
+
+Hinweis: Dieser Abschnitt beschreibt die geplante Zielarchitektur. Aktuell wird hier nur dokumentiert, nichts davon ist in diesem Schritt verpflichtend umgesetzt.
+
+Zielbild:
+
+- Statt Chat Trigger soll ein eigener Chat-Client (Web, App oder Service) n8n per HTTP API aufrufen.
+- n8n verarbeitet die Anfrage, ruft Ollama auf und liefert eine definierte JSON-Response zurueck.
+
+### 2.8.1 Endpoint und Port-Zuweisung
+
+Ausgehend von `N8N_HTTP_PORT=5678` und lokaler Nutzung:
+
+- Test Endpoint (nur im n8n Editor/Execute Kontext):
+  - `http://localhost:5678/webhook-test/<chat-path>`
+- Produktiv Endpoint (Workflow aktiv):
+  - `http://localhost:5678/webhook/<chat-path>`
+
+Pfad-Zuweisung:
+
+- `<chat-path>` wird direkt im Webhook Node in n8n gesetzt, z. B. `my-chat`.
+- Daraus werden:
+  - `http://localhost:5678/webhook-test/my-chat`
+  - `http://localhost:5678/webhook/my-chat`
+
+Aufruf aus anderem Docker-Container im selben Compose-Netz:
+
+- `http://n8n:5678/webhook/<chat-path>`
+
+### 2.8.1.1 Woher kommen die Namen webhook, webhook-test und chat-path?
+
+- `webhook` und `webhook-test` sind n8n Standard-Endpunktnamen.
+- Diese beiden Basisrouten kommen aus der n8n Server-Konfiguration, nicht aus `docker-compose.yml`.
+- `chat-path` (bzw. allgemein der Pfadanteil hinter der Basisroute) wird im jeweiligen Webhook Node im Feld `Path` festgelegt.
+
+Beispiel:
+
+- Node `Path`: `my-chat`
+- Test URL: `http://localhost:5678/webhook-test/my-chat`
+- Produktiv URL: `http://localhost:5678/webhook/my-chat`
+
+Wichtig zur Abgrenzung:
+
+- `docker-compose.yml` legt Port-Mapping und Erreichbarkeit fest (z. B. `5678:5678`).
+- n8n legt das URL-Schema der Webhook-Routen fest.
+- Der konkrete Endpunktname nach der Basisroute wird im Node gesetzt.
+
+Konfigurierbarkeit der Basisrouten:
+
+- Standardmaessig verwendet n8n `webhook` und `webhook-test`.
+- Diese Werte sind nicht hart fixiert und koennen per Umgebungsvariablen angepasst werden:
+  - `N8N_ENDPOINT_WEBHOOK`
+  - `N8N_ENDPOINT_WEBHOOK_TEST`
+- Wenn diese Variablen gesetzt sind, muessen Clients die angepassten Basisrouten verwenden.
+
+### 2.8.2 Geplanter Request/Response Vertrag
+
+Geplanter Request (Client -> n8n):
+
+```json
+{
+  "message": "What is 4 + 1?",
+  "conversationId": "conv-001",
+  "userId": "user-001"
+}
+```
+
+Geplante Response (n8n -> Client):
+
+```json
+{
+  "answer": "4 + 1 equals 5.",
+  "model": "qwen2.5:1.5b",
+  "conversationId": "conv-001",
+  "meta": {
+    "done": true,
+    "total_duration": 123456789
+  }
+}
+```
+
+### 2.8.3 Geplanter Workflow-Ablauf
+
+1. Webhook Trigger empfaengt JSON Request.
+2. Code/Set Node validiert `message` und normalisiert Felder.
+3. HTTP Request Node ruft `http://ollama:11434/api/generate` auf.
+4. Code Node mappt auf API-Response-Schema.
+5. Respond to Webhook Node gibt JSON an Client zurueck.
+
+### 2.8.4 Geplante Betriebsregeln
+
+- Test mit `webhook-test`, produktiver Betrieb mit `webhook`.
+- In Produktion nur aktivierte Workflows verwenden.
+- Webhook Endpoint absichern (Token/JWT/Reverse Proxy), nicht offen im Internet betreiben.
+- `N8N_WEBHOOK_URL` konsistent zur externen Erreichbarkeit setzen.
 
 ## 3. Ollama
 
