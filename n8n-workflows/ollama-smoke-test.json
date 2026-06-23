@@ -1,5 +1,5 @@
 {
-  "name": "Ollama - Minimal LLM Smoke Test",
+  "name": "Ollama - Einfacher Frage Smoke Test",
   "nodes": [
     {
       "parameters": {},
@@ -8,7 +8,20 @@
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        240,
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const systemPrompt = 'Answer in English and explain your answer clearly.';\nconst prompt = 'What is 4 + 1?';\n\nreturn [\n  {\n    json: {\n      llm_request: {\n        endpoint: 'http://ollama:11434/api/generate',\n        model: 'qwen2.5:1.5b',\n        stream: false,\n        options: {\n          temperature: 0.1,\n          top_p: 0.9,\n          num_predict: 180\n        },\n        system_prompt: systemPrompt,\n        prompt\n      }\n    }\n  }\n];"
+      },
+      "id": "5",
+      "name": "Build Simple Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
         300
       ]
     },
@@ -30,15 +43,23 @@
           "parameters": [
             {
               "name": "model",
-              "value": "tinyllama"
+              "value": "={{ $json.llm_request.model }}"
             },
             {
               "name": "prompt",
-              "value": "Gib in einem Satz zurueck, dass Ollama im Docker-Netzwerk erreichbar ist."
+              "value": "={{ $json.llm_request.prompt }}"
+            },
+            {
+              "name": "system",
+              "value": "={{ $json.llm_request.system_prompt }}"
             },
             {
               "name": "stream",
-              "value": false
+              "value": "={{ $json.llm_request.stream }}"
+            },
+            {
+              "name": "options",
+              "value": "={{ $json.llm_request.options }}"
             }
           ]
         },
@@ -55,29 +76,40 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
       "position": [
-        520,
+        740,
         300
       ],
       "retryOnFail": true,
-      "maxTries": 4,
-      "waitBetweenTries": 3000
+      "maxTries": 3,
+      "waitBetweenTries": 2000
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\n\nreturn items.map((item) => {\n  const src = item.json || {};\n  const body = src.body && typeof src.body === 'object' ? src.body : {};\n\n  return {\n    json: {\n      model: src.model ?? body.model ?? null,\n      response: src.response ?? body.response ?? null,\n      done: src.done ?? body.done ?? null,\n      total_duration: src.total_duration ?? body.total_duration ?? null\n    }\n  };\n});"
+        "jsCode": "const items = $input.all();\nconst requestItems = $items('Build Simple Request');\n\nreturn items.map((item, index) => {\n  const src = item.json || {};\n  const body = src.body && typeof src.body === 'object' ? src.body : {};\n  const payload = Object.keys(body).length ? body : src;\n  const requestJson = requestItems[index]?.json || {};\n\n  return {\n    json: {\n      llm_request: requestJson.llm_request ?? null,\n      llm_response: payload.response ?? null,\n      model: payload.model ?? requestJson.llm_request?.model ?? null,\n      done: payload.done ?? null,\n      total_duration: payload.total_duration ?? null\n    }\n  };\n});"
       },
       "id": "3",
       "name": "Select Output",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        780,
+        1010,
         300
       ]
     }
   ],
   "connections": {
     "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Simple Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Simple Request": {
       "main": [
         [
           {

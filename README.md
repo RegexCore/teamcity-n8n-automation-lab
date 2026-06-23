@@ -414,14 +414,14 @@ Relevante Werte in `.env`:
 ```env
 OLLAMA_HTTP_PORT=11434
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=tinyllama
+OLLAMA_MODEL=qwen2.5:1.5b
 ```
 
 Bedeutung:
 
 - `OLLAMA_HTTP_PORT`: veroeffentlichter Host-Port der Ollama API
 - `OLLAMA_BASE_URL`: Basis-URL fuer Host-seitige API Tests
-- `OLLAMA_MODEL`: minimales Testmodell fuer Workflows
+- `OLLAMA_MODEL`: kleines, stabileres Testmodell fuer Workflows
 
 ## 3.4 Ollama Erststart
 
@@ -431,10 +431,10 @@ Ollama starten:
 docker compose up -d --build ollama
 ```
 
-Minimales Modell ziehen:
+Modell ziehen:
 
 ```powershell
-docker compose exec ollama ollama pull tinyllama
+docker compose exec ollama ollama pull qwen2.5:1.5b
 ```
 
 API kurz pruefen:
@@ -466,7 +466,7 @@ docker compose exec ollama ollama list
 Smoke-Test Prompt:
 
 ```powershell
-docker compose exec ollama ollama run tinyllama "Antworte mit OK"
+docker compose exec ollama ollama run qwen2.5:1.5b "Antworte mit OK"
 ```
 
 n8n Workflow-Datei fuer Test:
@@ -488,7 +488,7 @@ Port in `.env` pruefen:
 
 ### 3.7.2 Modell nicht gefunden
 
-- Modell im Container ziehen: `docker compose exec ollama ollama pull tinyllama`
+- Modell im Container ziehen: `docker compose exec ollama ollama pull qwen2.5:1.5b`
 - Danach Workflow in n8n erneut ausfuehren
 
 ## 3.8 Ollama Einrichtung Schritt fuer Schritt
@@ -499,10 +499,10 @@ Port in `.env` pruefen:
 docker compose up -d --build ollama
 ```
 
-2. Minimales Modell laden (einmalig):
+2. Modell laden (einmalig):
 
 ```powershell
-docker compose exec ollama ollama pull tinyllama
+docker compose exec ollama ollama pull qwen2.5:1.5b
 ```
 
 3. Modell-Download pruefen:
@@ -514,7 +514,7 @@ docker compose exec ollama ollama list
 4. Kurzen Prompt-Test direkt im Container ausfuehren:
 
 ```powershell
-docker compose exec ollama ollama run tinyllama "Antworte mit OK"
+docker compose exec ollama ollama run qwen2.5:1.5b "Antworte mit OK"
 ```
 
 5. n8n-Testworkflow importieren und starten:
