@@ -99,13 +99,13 @@
     },
     {
       "parameters": {
-        "url": "={{ $json.teamcity.baseUrl + '/app/rest/builds' }}",
+        "url": "={{ (() => { let ctx = {}; try { ctx = $items('Build Query Context (Execute)')[0]?.json || {}; } catch (_) {} if (!ctx || !Object.keys(ctx).length) { try { ctx = $items('Build Query Context (Manual)')[0]?.json || {}; } catch (_) {} } return String(ctx.teamcity?.baseUrl || '') + '/app/rest/builds'; })() }}",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
             {
               "name": "locator",
-              "value": "={{ 'buildType:(id:' + $json.request.buildTypeId + '),status:FAILURE,state:finished,count:1' }}"
+              "value": "={{ (() => { let ctx = {}; try { ctx = $items('Build Query Context (Execute)')[0]?.json || {}; } catch (_) {} if (!ctx || !Object.keys(ctx).length) { try { ctx = $items('Build Query Context (Manual)')[0]?.json || {}; } catch (_) {} } const bt = String(ctx.request?.buildTypeId || ''); return 'buildType:(id:' + bt + '),status:FAILURE,state:finished,count:1'; })() }}"
             },
             {
               "name": "fields",
@@ -118,7 +118,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "={{ 'Bearer ' + $json.teamcity.token }}"
+              "value": "={{ (() => { let ctx = {}; try { ctx = $items('Build Query Context (Execute)')[0]?.json || {}; } catch (_) {} if (!ctx || !Object.keys(ctx).length) { try { ctx = $items('Build Query Context (Manual)')[0]?.json || {}; } catch (_) {} } return 'Bearer ' + String(ctx.teamcity?.token || ''); })() }}"
             },
             {
               "name": "Accept",

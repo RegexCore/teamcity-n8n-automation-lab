@@ -37,7 +37,7 @@
     {
       "parameters": {
         "options": {
-          "systemMessage": "You are a helpful assistant for TeamCity. If the user asks for project structure, project overview, build configurations, folders, modules, or similar (German or English), always call the workflow tool first and then answer with a concise summary. If the user asks for failed tests of a specific build type, call the failed-tests workflow tool with strict tool arguments. The arguments must be valid JSON with exactly one field: {\"input\":\"<buildTypeId>\"}. Never add any other field. Never send maxTests. Never send trailing text, markdown, or code fences in tool arguments. If buildTypeId is missing or ambiguous, ask a short clarification question first."
+          "systemMessage": "You are a helpful assistant for TeamCity. If the user asks for project structure, project overview, build configurations, folders, modules, or similar (German or English), always call the workflow tool first and then answer with a concise summary. If the user asks for failed tests of a specific build type, call the failed-tests workflow tool with strict tool arguments. If the user asks for passed tests of a specific build type, call the passed-tests workflow tool with strict tool arguments. For both test tools, the arguments must be valid JSON with exactly one field: {\"input\":\"<buildTypeId>\"}. Never add any other field. Never send maxTests. Never send trailing text, markdown, or code fences in tool arguments. If buildTypeId is missing or ambiguous, ask a short clarification question first."
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -173,9 +173,21 @@
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
-          "value": {},
+          "value": {
+            "input": "={{ $fromAI('input', 'TeamCity buildTypeId as plain string, e.g. demo_alpha_api') }}"
+          },
           "matchingColumns": [],
-          "schema": [],
+          "schema": [
+            {
+              "id": "input",
+              "displayName": "input",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
           "attemptToConvertTypes": false,
           "convertFieldsToString": false
         }
@@ -216,6 +228,46 @@
       ],
       "id": "62a42635-12f4-4f7b-9e17-d3f4e54b6b2a",
       "name": "Call 'Get_Failed_Tests_By_BuildType'"
+    },
+    {
+      "parameters": {
+        "description": "Use this tool whenever the user asks for passed tests for a specific TeamCity build type.\n\nInput contract:\n- input: required plain string containing only the buildTypeId (example: demo_alpha_api)\n\nSTRICT ARGUMENT FORMAT:\n- Tool arguments must be exactly: {\"input\":\"demo_alpha_api\"}\n- Do not include maxTests.\n- Do not include additional keys.\n- Do not include markdown or explanatory text in arguments.",
+        "workflowId": {
+          "__rl": true,
+          "value": "N8wX2g0Vf4CkL9yP",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/N8wX2g0Vf4CkL9yP",
+          "cachedResultName": "Get_Passed_Tests_By_BuildType"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "input": "={{ $fromAI('input', 'TeamCity buildTypeId as plain string, e.g. demo_alpha_api') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "input",
+              "displayName": "input",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        768,
+        576
+      ],
+      "id": "f44c1ec4-7f48-4c8f-8a2b-61057a0dcf43",
+      "name": "Call 'Get_Passed_Tests_By_BuildType'"
     },
     {
       "parameters": {
@@ -324,6 +376,17 @@
       ]
     },
     "Call 'Get_Failed_Tests_By_BuildType'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Get_Passed_Tests_By_BuildType'": {
       "ai_tool": [
         [
           {
