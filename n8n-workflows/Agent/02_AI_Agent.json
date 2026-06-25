@@ -1,0 +1,293 @@
+{
+  "name": "02_AI_Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const src = $input.first()?.json ?? {};\nlet output = src.output ?? src.text ?? src.response ?? src.answer ?? '';\n\nif (typeof output !== 'string') {\n  try {\n    output = JSON.stringify(output, null, 2);\n  } catch (_) {\n    output = String(output);\n  }\n}\n\nreturn [{\n  json: {\n    output: output,\n    text: output\n  }\n}];"
+      },
+      "id": "5dfad880-1601-4274-b390-78444a798b37",
+      "name": "Select Output1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6528,
+        2800
+      ]
+    },
+    {
+      "parameters": {
+        "model": "qwen3:8b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        6096,
+        3008
+      ],
+      "id": "561b9e4c-0039-423b-a70c-48ddf69b9191",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "WSOWGsUt5EbkmSg9",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are a helpful assistant for TeamCity. If the user asks for project structure, project overview, build configurations, folders, modules, or similar (German or English), always call the workflow tool first and then answer with a concise summary."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        6096,
+        2800
+      ],
+      "id": "1a5cfc32-bb37-4426-b878-d4397fb9bbea",
+      "name": "AI Agent",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nlet requestItems = [];\ntry {\n  requestItems = $items('Build Manual Request');\n} catch (_) {}\n\nif (!requestItems.length) {\n  try {\n    requestItems = $items('Build Chat Request');\n  } catch (_) {}\n}\n\nreturn items.map((item, index) => {\n  const src = item.json || {};\n  const body = src.body && typeof src.body === 'object' ? src.body : {};\n  const payload = Object.keys(body).length ? body : src;\n  const requestJson = requestItems[index]?.json ?? {};\n  const responseText = String(payload.response ?? '');\n\n  return {\n    json: {\n      mode: requestJson.mode ?? null,\n      input_question: requestJson.input_question ?? null,\n      llm_request: requestJson.llm_request ?? null,\n      llm_response: responseText,\n      text: responseText,\n      output: responseText,\n      model: payload.model ?? requestJson.llm_request?.model ?? null,\n      done: payload.done ?? null,\n      total_duration: payload.total_duration ?? null\n    }\n  };\n});"
+      },
+      "id": "3f86b269-7487-49e3-b905-a11b65174908",
+      "name": "Select Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6704,
+        2528
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "={{ $json.llm_request.model }}"
+            },
+            {
+              "name": "prompt",
+              "value": "={{ $json.llm_request.prompt }}"
+            },
+            {
+              "name": "system",
+              "value": "={{ $json.llm_request.system_prompt }}"
+            },
+            {
+              "name": "stream",
+              "value": "={{ $json.llm_request.stream }}"
+            },
+            {
+              "name": "options",
+              "value": "={{ $json.llm_request.options }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "996a0508-3018-40d7-b907-a2b4953c61bf",
+      "name": "Call Ollama",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        6416,
+        2528
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "const systemPrompt = 'Answer in English and explain your answer clearly.';\nconst question = ($json.chatInput || '').toString().trim();\n\nreturn [\n  {\n    json: {\n      mode: 'chat-input',\n      input_question: question,\n      llm_request: {\n        endpoint: 'http://ollama:11434/api/generate',\n        model: 'qwen2.5:1.5b',\n        stream: false,\n        options: {\n          temperature: 0.1,\n          top_p: 0.9,\n          num_predict: 180\n        },\n        system_prompt: systemPrompt,\n        prompt: question\n      }\n    }\n  }\n];"
+      },
+      "id": "880b75fc-6152-4062-804a-3f9d08586afa",
+      "name": "Build Chat Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6112,
+        2624
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "2a5a4ed6-4f93-4900-a176-1ea2ad7c21d2",
+      "name": "Chat Trigger",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        5792,
+        2896
+      ],
+      "webhookId": "ae71b698-e88d-47f3-b540-c4273783bf02"
+    },
+    {
+      "parameters": {
+        "jsCode": "const systemPrompt = 'Answer in English and explain your answer clearly.';\nconst prompt = 'What is 4 + 1?';\n\nreturn [\n  {\n    json: {\n      mode: 'manual-fixed',\n      input_question: prompt,\n      llm_request: {\n        endpoint: 'http://ollama:11434/api/generate',\n        model: 'qwen2.5:1.5b',\n        stream: false,\n        options: {\n          temperature: 0.1,\n          top_p: 0.9,\n          num_predict: 180\n        },\n        system_prompt: systemPrompt,\n        prompt\n      }\n    }\n  }\n];"
+      },
+      "id": "fb3265f1-7696-4625-8fff-b5b41e5d1b76",
+      "name": "Build Manual Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6112,
+        2416
+      ]
+    },
+    {
+      "parameters": {
+        "description": "Use this tool whenever the user asks about the TeamCity project structure, projects, build configurations, folders or modules.\nThis tool retrieves the latest project structure from TeamCity and returns it. No Input data necessary!",
+        "workflowId": {
+          "__rl": true,
+          "value": "AEI7rIcKI39Ce8e3",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/AEI7rIcKI39Ce8e3",
+          "cachedResultName": "01_Get_Project_Structure"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        6352,
+        2992
+      ],
+      "id": "b4e91795-8a28-447b-80fc-e57ee50fd954",
+      "name": "Call '01_Get_Project_Structure'"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Select Output1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Ollama": {
+      "main": [
+        [
+          {
+            "node": "Select Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Chat Request": {
+      "main": [
+        [
+          {
+            "node": "Call Ollama",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Manual Request": {
+      "main": [
+        [
+          {
+            "node": "Call Ollama",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call '01_Get_Project_Structure'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "3a24c606-6cc3-4ff2-acc1-bff666d667cf",
+  "meta": {
+    "instanceId": "e49844d4d683cac13f54084fa5356b54658c12021c031a45c13b3f26e54bf57a"
+  },
+  "nodeGroups": [],
+  "id": "ha7OrwBF7bpWOq6c",
+  "tags": [
+    {
+      "updatedAt": "2026-06-25T07:00:37.195Z",
+      "createdAt": "2026-06-25T07:00:37.195Z",
+      "id": "FayBN1pexKl90DVB",
+      "name": "TeamCity-AI"
+    }
+  ]
+}

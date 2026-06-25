@@ -670,6 +670,7 @@ Pull model:
 
 ```powershell
 docker compose exec ollama ollama pull qwen2.5:1.5b
+docker compose exec ollama ollama pull qwen3:8b
 ```
 
 Quick API check:
