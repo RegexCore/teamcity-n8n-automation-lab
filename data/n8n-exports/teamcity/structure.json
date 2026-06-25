@@ -1,6 +1,6 @@
 {
   "snapshotType": "teamcity_structure",
-  "createdAt": "2026-06-25T10:21:45.353Z",
+  "createdAt": "2026-06-25T10:45:17.409Z",
   "totalProjects": 3,
   "totalBuildTypes": 6,
   "projects": [
@@ -15,7 +15,7 @@
           "projectId": "demo_alpha",
           "paused": false,
           "webUrl": "http://localhost:8111/buildConfiguration/demo_alpha_api?mode=builds",
-          "lastSeenAt": "2026-06-25T10:21:45.353Z"
+          "lastSeenAt": "2026-06-25T10:45:17.409Z"
         },
         {
           "buildTypeId": "demo_alpha_smoke",
@@ -24,7 +24,7 @@
           "projectId": "demo_alpha",
           "paused": false,
           "webUrl": "http://localhost:8111/buildConfiguration/demo_alpha_smoke?mode=builds",
-          "lastSeenAt": "2026-06-25T10:21:45.353Z"
+          "lastSeenAt": "2026-06-25T10:45:17.409Z"
         }
       ],
       "activeBuildTypes": 2,
@@ -41,7 +41,7 @@
           "projectId": "demo_beta",
           "paused": false,
           "webUrl": "http://localhost:8111/buildConfiguration/demo_beta_package?mode=builds",
-          "lastSeenAt": "2026-06-25T10:21:45.353Z"
+          "lastSeenAt": "2026-06-25T10:45:17.409Z"
         },
         {
           "buildTypeId": "demo_beta_unit",
@@ -50,7 +50,7 @@
           "projectId": "demo_beta",
           "paused": false,
           "webUrl": "http://localhost:8111/buildConfiguration/demo_beta_unit?mode=builds",
-          "lastSeenAt": "2026-06-25T10:21:45.353Z"
+          "lastSeenAt": "2026-06-25T10:45:17.409Z"
         }
       ],
       "activeBuildTypes": 2,
@@ -67,7 +67,7 @@
           "projectId": "demo_gamma",
           "paused": false,
           "webUrl": "http://localhost:8111/buildConfiguration/demo_gamma_lint?mode=builds",
-          "lastSeenAt": "2026-06-25T10:21:45.353Z"
+          "lastSeenAt": "2026-06-25T10:45:17.409Z"
         },
         {
           "buildTypeId": "demo_gamma_release",
@@ -76,7 +76,7 @@
           "projectId": "demo_gamma",
           "paused": false,
           "webUrl": "http://localhost:8111/buildConfiguration/demo_gamma_release?mode=builds",
-          "lastSeenAt": "2026-06-25T10:21:45.353Z"
+          "lastSeenAt": "2026-06-25T10:45:17.409Z"
         }
       ],
       "activeBuildTypes": 2,

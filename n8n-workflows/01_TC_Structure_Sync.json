@@ -14,7 +14,7 @@
     },
     {
       "parameters": {
-        "jsCode": "return [{\n  json: {\n    teamcity: {\n      baseUrl: $env.TEAMCITY_BASE_URL || 'http://teamcity-server:8111',\n      token: $env.TEAMCITY_TOKEN || '__TEAMCITY_TOKEN__'\n    },\n    storage: {\n      structurePath: $env.TEAMCITY_AI_STRUCTURE_PATH || '/data/n8n-exports/teamcity/structure.json'\n    },\n    generatedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "return [{\n  json: {\n    teamcity: {\n      baseUrl: $env.TEAMCITY_BASE_URL_N8N || $env.TEAMCITY_BASE_URL || 'http://teamcity-server:8111',\n      token: $env.TEAMCITY_TOKEN || '__TEAMCITY_TOKEN__'\n    },\n    storage: {\n      structurePath: $env.TEAMCITY_AI_STRUCTURE_PATH || '/data/n8n-exports/teamcity/structure.json'\n    },\n    generatedAt: new Date().toISOString()\n  }\n}];"
       },
       "id": "0038caa9-8c56-42f3-b283-df94030c981d",
       "name": "Config",

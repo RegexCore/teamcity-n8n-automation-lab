@@ -47,6 +47,7 @@ services:
       WEBHOOK_URL: "${N8N_WEBHOOK_URL:-http://localhost:5678/}"
       GENERIC_TIMEZONE: "${N8N_TIMEZONE:-Europe/Berlin}"
       TEAMCITY_TOKEN: "${TEAMCITY_TOKEN:-}"
+      TEAMCITY_BASE_URL_N8N: "${TEAMCITY_BASE_URL_N8N:-http://teamcity-server:8111}"
       TEAMCITY_AI_STRUCTURE_PATH: "${TEAMCITY_AI_STRUCTURE_PATH:-/data/n8n-exports/teamcity/structure.json}"
       N8N_RESTRICT_FILE_ACCESS_TO: "${N8N_RESTRICT_FILE_ACCESS_TO:-/data/n8n-exports}"
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "${N8N_BLOCK_ENV_ACCESS_IN_NODE:-false}"
