@@ -20,3 +20,10 @@ Thumbs.db
 # IDE files
 .idea/
 .vscode/
+
+# Data folder: keep structure, ignore generated content
+data/**
+!data/
+!data/.gitkeep
+!data/**/
+!data/**/.gitkeep

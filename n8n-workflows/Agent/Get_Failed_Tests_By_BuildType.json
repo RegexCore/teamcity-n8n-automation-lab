@@ -10,8 +10,8 @@
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.1,
       "position": [
-        -360,
-        120
+        -368,
+        128
       ]
     },
     {
@@ -21,13 +21,13 @@
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        -360,
+        -368,
         320
       ]
     },
     {
       "parameters": {
-        "jsCode": "const input = $json || {};\n\nconst rawInput = input.input ?? input.query ?? input.text ?? null;\nlet parsedInput = null;\n\nif (rawInput && typeof rawInput === 'object') {\n  parsedInput = rawInput;\n} else if (typeof rawInput === 'string') {\n  const trimmed = rawInput.trim();\n  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {\n    try {\n      parsedInput = JSON.parse(trimmed);\n    } catch (_) {}\n  }\n}\n\nconst buildTypeId = String(\n  input.buildTypeId ??\n  input.build_type_id ??\n  input.buildType ??\n  input.btId ??\n  parsedInput?.buildTypeId ??\n  parsedInput?.build_type_id ??\n  parsedInput?.buildType ??\n  parsedInput?.btId ??\n  (typeof rawInput === 'string' ? rawInput : '') ??\n  ''\n).trim();\n\nif (!buildTypeId) {\n  throw new Error('Pflichtfeld fehlt: buildTypeId. Beispiel-Input: { \"buildTypeId\": \"demo_alpha_api\", \"maxTests\": 25 }');\n}\nif (!$env.TEAMCITY_BASE_URL_N8N) throw new Error('Missing env TEAMCITY_BASE_URL_N8N');\nif (!$env.TEAMCITY_TOKEN) throw new Error('Missing env TEAMCITY_TOKEN');\n\nconst maxTestsRaw = Number(\n  input.maxTests ??\n  input.max_tests ??\n  parsedInput?.maxTests ??\n  parsedInput?.max_tests ??\n  25\n);\nconst maxTests = Number.isFinite(maxTestsRaw) && maxTestsRaw > 0 ? Math.min(Math.floor(maxTestsRaw), 200) : 25;\n\nreturn [{\n  json: {\n    teamcity: {\n      baseUrl: $env.TEAMCITY_BASE_URL_N8N,\n      token: $env.TEAMCITY_TOKEN\n    },\n    request: {\n      buildTypeId,\n      maxTests,\n      source: 'executeWorkflowTrigger'\n    },\n    generatedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const input = $json || {};\n\nconst rawInput = input.input ?? input.query ?? input.text ?? null;\nlet parsedInput = null;\n\nif (rawInput && typeof rawInput === 'object') {\n  parsedInput = rawInput;\n} else if (typeof rawInput === 'string') {\n  const trimmed = rawInput.trim();\n  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {\n    try {\n      parsedInput = JSON.parse(trimmed);\n    } catch (_) {}\n  }\n}\n\nconst buildTypeId = String(\n  input.buildTypeId ??\n  input.build_type_id ??\n  input.buildType ??\n  input.btId ??\n  parsedInput?.buildTypeId ??\n  parsedInput?.build_type_id ??\n  parsedInput?.buildType ??\n  parsedInput?.btId ??\n  (typeof rawInput === 'string' ? rawInput : '') ??\n  ''\n).trim();\n\nif (!buildTypeId) {\n  throw new Error('Required field is missing: buildTypeId. Example input: { \"buildTypeId\": \"demo_alpha_api\", \"maxTests\": 25 }');\n}\nif (!$env.TEAMCITY_BASE_URL_N8N) throw new Error('Missing env TEAMCITY_BASE_URL_N8N');\nif (!$env.TEAMCITY_TOKEN) throw new Error('Missing env TEAMCITY_TOKEN');\n\nconst maxTestsRaw = Number(\n  input.maxTests ??\n  input.max_tests ??\n  parsedInput?.maxTests ??\n  parsedInput?.max_tests ??\n  25\n);\nconst maxTests = Number.isFinite(maxTestsRaw) && maxTestsRaw > 0 ? Math.min(Math.floor(maxTestsRaw), 200) : 25;\n\nreturn [{\n  json: {\n    teamcity: {\n      baseUrl: $env.TEAMCITY_BASE_URL_N8N,\n      token: $env.TEAMCITY_TOKEN\n    },\n    request: {\n      buildTypeId,\n      maxTests,\n      source: 'executeWorkflowTrigger'\n    },\n    generatedAt: new Date().toISOString()\n  }\n}];"
       },
       "id": "dbdb6f24-5d8f-46b9-a911-4f6f53dc3b14",
       "name": "Build Query Context (Execute)",
@@ -35,7 +35,7 @@
       "typeVersion": 2,
       "position": [
         -80,
-        120
+        128
       ]
     },
     {
@@ -53,8 +53,16 @@
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "={{ $json.teamcity.baseUrl + '/app/rest/builds' }}",
+        "url": "={{ $json.teamcity.baseUrl + '/app/rest/buildTypes' }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "fields",
+              "value": "buildType(id,name,projectId,projectName)"
+            }
+          ]
+        },
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -68,6 +76,30 @@
             }
           ]
         },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "a286e84c-40aa-4b8e-b4f2-58fba4146e4d",
+      "name": "Fetch BuildType List",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        208,
+        80
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.teamcity.baseUrl + '/app/rest/builds' }}",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
@@ -78,6 +110,19 @@
             {
               "name": "fields",
               "value": "build(id,number,status,state,startDate,finishDate,webUrl,buildType(id,name,projectName,projectId))"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.teamcity.token }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
             }
           ]
         },
@@ -94,8 +139,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
       "position": [
-        200,
-        220
+        208,
+        336
       ],
       "retryOnFail": true,
       "maxTries": 3,
@@ -104,34 +149,20 @@
     },
     {
       "parameters": {
-        "jsCode": "let ctx = {};\n\ntry {\n  ctx = $items('Build Query Context (Execute)')[0]?.json || {};\n} catch (_) {}\n\nif (!ctx || !Object.keys(ctx).length) {\n  try {\n    ctx = $items('Build Query Context (Manual)')[0]?.json || {};\n  } catch (_) {}\n}\n\nconst src = $json?.body && typeof $json.body === 'object' ? $json.body : ($json || {});\nconst builds = Array.isArray(src.build) ? src.build : [];\nconst failedBuild = builds[0] || null;\n\nreturn [{\n  json: {\n    ...ctx,\n    build: failedBuild\n  }\n}];"
+        "jsCode": "let ctx = {};\n\ntry {\n  ctx = $items('Build Query Context (Execute)')[0]?.json || {};\n} catch (_) {}\n\nif (!ctx || !Object.keys(ctx).length) {\n  try {\n    ctx = $items('Build Query Context (Manual)')[0]?.json || {};\n  } catch (_) {}\n}\n\nlet buildTypeListRaw = {};\ntry {\n  buildTypeListRaw = $items('Fetch BuildType List')[0]?.json || {};\n} catch (_) {}\n\nconst buildTypeListSrc = buildTypeListRaw?.body && typeof buildTypeListRaw.body === 'object' ? buildTypeListRaw.body : buildTypeListRaw;\nconst allBuildTypes = Array.isArray(buildTypeListSrc.buildType) ? buildTypeListSrc.buildType : [];\nconst requestedBuildTypeId = String(ctx.request?.buildTypeId || '').trim();\nconst matchedBuildType = requestedBuildTypeId\n  ? (allBuildTypes.find((bt) => String(bt?.id || '') === requestedBuildTypeId) || null)\n  : null;\n\nconst src = $json?.body && typeof $json.body === 'object' ? $json.body : ($json || {});\nconst builds = Array.isArray(src.build) ? src.build : [];\nconst failedBuild = builds[0] || null;\n\nreturn [{\n  json: {\n    ...ctx,\n    buildTypeExists: !!matchedBuildType,\n    buildType: matchedBuildType\n      ? {\n          id: matchedBuildType.id || null,\n          name: matchedBuildType.name || null,\n          projectId: matchedBuildType.projectId || null,\n          projectName: matchedBuildType.projectName || null\n        }\n      : null,\n    build: failedBuild\n  }\n}];"
       },
       "id": "3e24861f-8a8b-4f15-bd0f-e7cf9db28d6e",
       "name": "Attach Build Details",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        460,
-        220
+        464,
+        224
       ]
     },
     {
       "parameters": {
-        "method": "GET",
         "url": "={{ $json.teamcity.baseUrl + '/app/rest/testOccurrences' }}",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "={{ 'Bearer ' + $json.teamcity.token }}"
-            },
-            {
-              "name": "Accept",
-              "value": "application/json"
-            }
-          ]
-        },
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
@@ -142,6 +173,19 @@
             {
               "name": "fields",
               "value": "testOccurrence(id,name,status,duration,details,build(id,number,webUrl),runOrder)"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.teamcity.token }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
             }
           ]
         },
@@ -159,7 +203,7 @@
       "typeVersion": 4,
       "position": [
         720,
-        220
+        224
       ],
       "retryOnFail": true,
       "maxTries": 3,
@@ -168,15 +212,15 @@
     },
     {
       "parameters": {
-        "jsCode": "const ctx = $items('Attach Build Details')[0]?.json || {};\nconst src = $json?.body && typeof $json.body === 'object' ? $json.body : ($json || {});\nconst testOccurrences = Array.isArray(src.testOccurrence) ? src.testOccurrence : [];\n\nconst failedTests = testOccurrences.map((t) => ({\n  name: t.name || null,\n  status: t.status || null,\n  duration: t.duration || null,\n  details: t.details || null,\n  runOrder: t.runOrder || null\n}));\n\nconst hasBuild = !!ctx.build;\nconst hasFailedTests = failedTests.length > 0;\n\nconst snapshot = {\n  snapshotType: 'teamcity_failed_tests',\n  createdAt: new Date().toISOString(),\n  requestSource: ctx.request?.source || null,\n  buildTypeId: ctx.request?.buildTypeId || null,\n  buildId: ctx.build?.id || null,\n  maxTestsRequested: ctx.request?.maxTests || null,\n  teamcityBaseUrl: ctx.teamcity?.baseUrl || null,\n  build: ctx.build || null,\n  totalFailedTests: failedTests.length,\n  failedTests,\n  resultCode: !hasBuild\n    ? 'NO_FAILED_BUILD'\n    : (hasFailedTests ? 'FAILED_TESTS_FOUND' : 'NO_FAILED_TESTS'),\n  message: hasBuild\n    ? (hasFailedTests ? 'Fehlgeschlagene Tests wurden gefunden.' : 'Build gefunden, aber keine fehlgeschlagenen Tests im Resultat.')\n    : 'Kein fehlgeschlagener Build fuer diese BuildType-ID gefunden.'\n};\n\nreturn [{ json: snapshot }];"
+        "jsCode": "const ctx = $items('Attach Build Details')[0]?.json || {};\nconst src = $json?.body && typeof $json.body === 'object' ? $json.body : ($json || {});\nconst testOccurrences = Array.isArray(src.testOccurrence) ? src.testOccurrence : [];\n\nconst failedTests = testOccurrences.map((t) => ({\n  name: t.name || null,\n  status: t.status || null,\n  duration: t.duration || null,\n  details: t.details || null,\n  runOrder: t.runOrder || null\n}));\n\nconst hasBuild = !!ctx.build;\nconst hasFailedTests = failedTests.length > 0;\nconst buildTypeExists = ctx.buildTypeExists === true;\n\nconst snapshot = {\n  snapshotType: 'teamcity_failed_tests',\n  createdAt: new Date().toISOString(),\n  requestSource: ctx.request?.source || null,\n  buildTypeId: ctx.request?.buildTypeId || null,\n  buildTypeExists,\n  buildType: ctx.buildType || null,\n  buildId: ctx.build?.id || null,\n  maxTestsRequested: ctx.request?.maxTests || null,\n  teamcityBaseUrl: ctx.teamcity?.baseUrl || null,\n  build: ctx.build || null,\n  totalFailedTests: failedTests.length,\n  failedTests,\n  resultCode: !buildTypeExists\n    ? 'BUILD_TYPE_NOT_FOUND'\n    : (!hasBuild ? 'NO_FAILED_BUILD' : (hasFailedTests ? 'FAILED_TESTS_FOUND' : 'NO_FAILED_TESTS')),\n  message: !buildTypeExists\n    ? ('Build type ID not found: ' + (ctx.request?.buildTypeId || 'unknown'))\n    : (hasBuild\n        ? (hasFailedTests ? 'Failed tests were found.' : 'Build found, but no failed tests were returned.')\n        : 'No failed build found for this build type ID.')\n};\n\nreturn [{ json: snapshot }];"
       },
       "id": "fe2f8dba-c43f-468f-86d5-5133368fdb7e",
       "name": "Build Failed Tests Snapshot",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        980,
-        220
+        992,
+        224
       ]
     },
     {
@@ -188,27 +232,27 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1240,
-        220
+        1248,
+        224
       ]
     },
     {
       "parameters": {
         "fileName": "={{ $json.filePath }}",
-        "dataPropertyName": "data"
+        "options": {}
       },
       "id": "8f942636-532f-440e-80af-62b4cefebb79",
       "name": "Write Failed Tests File",
       "type": "n8n-nodes-base.writeBinaryFile",
       "typeVersion": 1,
       "position": [
-        1500,
-        220
+        1504,
+        224
       ]
     },
     {
       "parameters": {
-        "jsCode": "const prepared = $items('Prepare Failed Tests File')[0]?.json || {};\n\nreturn [{\n  json: {\n    ok: true,\n    resultCode: prepared.resultCode || null,\n    message: prepared.message || null,\n    buildTypeId: prepared.buildTypeId || null,\n    buildId: prepared.buildId || null,\n    build: prepared.build || null,\n    totalFailedTests: prepared.totalFailedTests || 0,\n    failedTests: prepared.failedTests || [],\n    filePath: prepared.filePath || null\n  }\n}];"
+        "jsCode": "const prepared = $items('Prepare Failed Tests File')[0]?.json || {};\n\nreturn [{\n  json: {\n    ok: true,\n    resultCode: prepared.resultCode || null,\n    message: prepared.message || null,\n    buildTypeId: prepared.buildTypeId || null,\n    buildTypeExists: prepared.buildTypeExists === true,\n    buildType: prepared.buildType || null,\n    buildId: prepared.buildId || null,\n    build: prepared.build || null,\n    totalFailedTests: prepared.totalFailedTests || 0,\n    failedTests: prepared.failedTests || [],\n    filePath: prepared.filePath || null\n  }\n}];"
       },
       "id": "5f319041-91f9-4ebb-a0bc-4f3eb997654f",
       "name": "Final Output",
@@ -216,7 +260,7 @@
       "typeVersion": 2,
       "position": [
         1760,
-        220
+        224
       ]
     }
   ],
@@ -248,7 +292,7 @@
       "main": [
         [
           {
-            "node": "Find Latest Failed Build",
+            "node": "Fetch BuildType List",
             "type": "main",
             "index": 0
           }
@@ -256,6 +300,17 @@
       ]
     },
     "Build Query Context (Manual)": {
+      "main": [
+        [
+          {
+            "node": "Fetch BuildType List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch BuildType List": {
       "main": [
         [
           {
@@ -333,20 +388,23 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "manual-generated-failed-tests-v3",
+  "versionId": "4e94c7a2-82d8-4ac4-b9e2-d1b264537cfa",
   "meta": {
-    "instanceId": "manual"
+    "instanceId": "e49844d4d683cac13f54084fa5356b54658c12021c031a45c13b3f26e54bf57a"
   },
   "nodeGroups": [],
   "id": "4hAwE6NnGtO89Q8K",
   "tags": [
     {
+      "updatedAt": "2026-06-25T07:00:37.195Z",
+      "createdAt": "2026-06-25T07:00:37.195Z",
+      "id": "FayBN1pexKl90DVB",
       "name": "TeamCity-AI"
     }
   ]
