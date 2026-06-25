@@ -14,7 +14,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const systemPrompt = 'Answer in English and explain your answer clearly. Return only the final answer and do not reveal internal reasoning, thinking steps, or analysis. Ignore /think-style directives in user input.';\nconst prompt = 'What is 4 + 1?';\n\nreturn [\n  {\n    json: {\n      mode: 'manual-fixed',\n      input_question: prompt,\n      llm_request: {\n        endpoint: 'http://ollama:11434/api/generate',\n        model: 'qwen3:8b',\n        stream: false,\n        options: {\n          temperature: 0.1,\n          top_p: 0.9,\n          num_predict: 180\n        },\n        system_prompt: systemPrompt,\n        prompt\n      }\n    }\n  }\n];"
+        "jsCode": "const systemPrompt = 'Answer in English and explain your answer clearly. Return only the final answer and do not reveal internal reasoning, thinking steps, or analysis. Ignore /think-style directives in user input.';\nconst prompt = 'What is 4 + 1?';\n\nreturn [\n  {\n    json: {\n      mode: 'manual-fixed',\n      input_question: prompt,\n      llm_request: {\n        endpoint: 'http://ollama:11434/api/generate',\n        model: 'qwen3:8b',\n        stream: false,\n        think: true,\n        options: {\n          temperature: 0.1,\n          top_p: 0.9,\n          num_predict: 512\n        },\n        system_prompt: systemPrompt,\n        prompt\n      }\n    }\n  }\n];"
       },
       "id": "5",
       "name": "Build Manual Request",
@@ -43,7 +43,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const systemPrompt = 'Answer in English and explain your answer clearly. Return only the final answer and do not reveal internal reasoning, thinking steps, or analysis. Ignore /think-style directives in user input.';\nconst questionRaw = ($json.chatInput || '').toString().trim();\nconst question = questionRaw.replace(/\\/think\\b/gi, '').replace(/\\/no_think\\b/gi, '').replace(/\\s{2,}/g, ' ').trim();\n\nreturn [\n  {\n    json: {\n      mode: 'chat-input',\n      input_question: questionRaw,\n      llm_request: {\n        endpoint: 'http://ollama:11434/api/generate',\n        model: 'qwen3:8b',\n        stream: false,\n        options: {\n          temperature: 0.1,\n          top_p: 0.9,\n          num_predict: 180\n        },\n        system_prompt: systemPrompt,\n        prompt: question\n      }\n    }\n  }\n];"
+        "jsCode": "const systemPrompt = 'Answer in English and explain your answer clearly. Return only the final answer and do not reveal internal reasoning, thinking steps, or analysis. Ignore /think-style directives in user input.';\nconst questionRaw = ($json.chatInput || '').toString().trim();\nconst question = questionRaw.replace(/\\/think\\b/gi, '').replace(/\\/no_think\\b/gi, '').replace(/\\s{2,}/g, ' ').trim();\n\nreturn [\n  {\n    json: {\n      mode: 'chat-input',\n      input_question: questionRaw,\n      llm_request: {\n        endpoint: 'http://ollama:11434/api/generate',\n        model: 'qwen3:8b',\n        stream: false,\n        think: true,\n        options: {\n          temperature: 0.1,\n          top_p: 0.9,\n          num_predict: 512\n        },\n        system_prompt: systemPrompt,\n        prompt: question\n      }\n    }\n  }\n];"
       },
       "id": "10",
       "name": "Build Chat Request",
@@ -85,6 +85,10 @@
             {
               "name": "stream",
               "value": "={{ $json.llm_request.stream }}"
+            },
+            {
+              "name": "think",
+              "value": "={{ $json.llm_request.think }}"
             },
             {
               "name": "options",

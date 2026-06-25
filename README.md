@@ -34,6 +34,7 @@ Local Docker Compose lab for TeamCity (REST + MCP test flows), n8n (UI + chat/we
   - [3.1 Scope](#31-scope)
   - [3.2 Architecture](#32-architecture)
   - [3.3 Configuration](#33-configuration)
+  - [3.3.1 LLM Request Parameters](#331-llm-request-parameters)
   - [3.4 First Start](#34-first-start)
   - [3.5 Persistence](#35-persistence)
   - [3.6 Commands](#36-commands)
@@ -663,6 +664,73 @@ Meaning:
 - `OLLAMA_GPU_REQUEST`: Docker GPU request passed to compose (`all` enables GPU request)
 - `OLLAMA_GPU_DEVICES`: NVIDIA visible devices inside container (`all` or `none` for CPU-only)
 - `OLLAMA_GPU_CAPABILITIES`: requested NVIDIA driver capabilities
+
+## 3.3.1 LLM Request Parameters
+
+These parameters control text generation behavior in Ollama API requests.
+They are LLM runtime parameters, not Docker or container runtime settings.
+
+Current usage in this lab (workflow `n8n-workflows/Misc/ollama-smoke-test.json`):
+
+- `model`: `qwen3:8b`
+- `stream`: `false`
+- `think`: `true` (thinking is returned in raw data, final answer is mapped to chat output)
+- `system`: instruction context for the assistant
+- `prompt`: user input text
+- `options.temperature`: `0.1`
+- `options.top_p`: `0.9`
+- `options.num_predict`: `512`
+
+Detailed explanation of each current parameter:
+
+- `model`: Selects the exact model tag to run (for example `qwen3:8b`).
+  The model defines quality, speed, memory usage, context limits, and supported features.
+- `stream`: Controls response delivery mode.
+  `false` returns one complete JSON response when generation is finished.
+  `true` returns partial chunks incrementally (better latency, more handling complexity).
+- `think`: Enables or disables model thinking output (if the model/runtime supports it).
+  With `true`, extra reasoning text may be produced (for debug/audit).
+  With `false`, the model usually returns only final answer text.
+- `system`: High-priority instruction message for behavior, style, language, and safety.
+  Use it for stable behavior such as "answer in English" or formatting rules.
+- `prompt`: The actual user task or question text.
+  This is the main input content the model responds to.
+- `options.temperature`: Controls randomness.
+  Lower values (for example `0.0` to `0.3`) are more deterministic and stable.
+  Higher values (for example `0.7` to `1.0`) are more creative but less predictable.
+- `options.top_p`: Nucleus sampling threshold.
+  The model samples from tokens whose cumulative probability reaches `top_p`.
+  Lower values narrow choices (more focused), higher values broaden choices.
+- `options.num_predict`: Maximum number of output tokens to generate.
+  If too low, answers can be cut off or final answer may be missing when `think=true`.
+  If too high, latency and compute usage increase.
+
+Important optional Ollama generation options you can configure in `options`:
+
+- `seed`: fixed random seed for reproducible outputs.
+  Same prompt + same options + same seed increases repeatability.
+- `num_ctx`: maximum context window (token budget for prompt + history + output planning).
+  Higher values allow longer conversations but require more memory and can reduce speed.
+- `repeat_penalty`: discourages repeating the same tokens/phrases.
+  Typical range is around `1.05` to `1.2`; too high can hurt fluency.
+- `repeat_last_n`: how many recent tokens are considered by repeat penalty.
+  `0` disables this behavior; larger values penalize repetition over longer spans.
+- `top_k`: limits sampling to the top-k most likely next tokens.
+  Lower values are safer/more deterministic; higher values increase diversity.
+- `min_p`: minimum probability floor for candidate tokens.
+  Can remove very unlikely tokens and stabilize outputs in some setups.
+- `num_gpu`: GPU offload control (runtime/model dependent).
+  Useful for tuning memory/speed trade-offs on multi-device or constrained systems.
+- `num_thread`: CPU thread count used for generation.
+  Tune based on host CPU cores and concurrent workloads.
+- `stop`: one or more stop sequences that terminate generation when matched.
+  Useful for strict output formats and protocol-style prompts.
+
+Practical notes:
+
+- If `think=true`, keep `num_predict` high enough so the model can return both thinking and final answer text.
+- If final answer is missing, increase `num_predict` first.
+- For fastest and most stable chat replies, set `think=false`.
 
 CPU-only toggle:
 
