@@ -143,8 +143,8 @@
       "type": "@n8n/n8n-nodes-langchain.chatTrigger",
       "typeVersion": 1.1,
       "position": [
-        5792,
-        2896
+        5776,
+        2848
       ],
       "webhookId": "ae71b698-e88d-47f3-b540-c4273783bf02"
     },
@@ -158,7 +158,7 @@
       "typeVersion": 2,
       "position": [
         6112,
-        2416
+        2448
       ]
     },
     {
@@ -166,9 +166,9 @@
         "description": "Use this tool whenever the user asks about the TeamCity project structure, projects, build configurations, folders or modules.\nThis tool retrieves the latest project structure from TeamCity and returns it. No Input data necessary!",
         "workflowId": {
           "__rl": true,
-          "value": "AEI7rIcKI39Ce8e3",
+          "value": "k6otzC79eXMxdRF3",
           "mode": "list",
-          "cachedResultUrl": "/workflow/AEI7rIcKI39Ce8e3",
+          "cachedResultUrl": "/workflow/k6otzC79eXMxdRF3",
           "cachedResultName": "01_Get_Project_Structure"
         },
         "workflowInputs": {
@@ -183,11 +183,26 @@
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 2.2,
       "position": [
-        6352,
-        2992
+        6336,
+        3008
       ],
       "id": "b4e91795-8a28-447b-80fc-e57ee50fd954",
       "name": "Call '01_Get_Project_Structure'"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Use this tool whenever the user asks for a HTTP test.",
+        "url": "=https://jsonplaceholder.typicode.com/todos/1",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        6528,
+        3008
+      ],
+      "id": "c28075cd-4528-4d3b-b6a8-7e2a22d2f36f",
+      "name": "HTTP Request"
     }
   ],
   "pinData": {},
@@ -268,6 +283,17 @@
           }
         ]
       ]
+    },
+    "HTTP Request": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -276,7 +302,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "3a24c606-6cc3-4ff2-acc1-bff666d667cf",
+  "versionId": "04bebdb2-2156-4bf4-9b34-74c72b753f5b",
   "meta": {
     "instanceId": "e49844d4d683cac13f54084fa5356b54658c12021c031a45c13b3f26e54bf57a"
   },
