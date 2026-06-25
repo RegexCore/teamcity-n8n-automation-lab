@@ -194,29 +194,16 @@
         "description": "Use this tool whenever the user asks for failed tests for a specific TeamCity build type.\n\nInput contract:\n- input: required plain string containing only the buildTypeId (example: demo_alpha_api)\n\nSTRICT ARGUMENT FORMAT:\n- Tool arguments must be exactly: {\"input\":\"demo_alpha_api\"}\n- Do not include maxTests.\n- Do not include additional keys.\n- Do not include markdown or explanatory text in arguments.",
         "workflowId": {
           "__rl": true,
-          "value": "Get_Failed_Tests_By_BuildType",
-          "mode": "name"
+          "value": "4hAwE6NnGtO89Q8K",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/4hAwE6NnGtO89Q8K",
+          "cachedResultName": "Get_Failed_Tests_By_BuildType"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
-          "value": {
-            "input": "{{ $fromAI('input', 'TeamCity buildTypeId as plain string, e.g. demo_alpha_api') }}"
-          },
-          "matchingColumns": [
-            "input"
-          ],
-          "schema": [
-            {
-              "id": "input",
-              "displayName": "input",
-              "required": true,
-              "defaultMatch": false,
-              "display": true,
-              "canBeUsedToMatch": true,
-              "type": "string",
-              "removed": false
-            }
-          ],
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
           "attemptToConvertTypes": false,
           "convertFieldsToString": false
         }
@@ -376,7 +363,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "8ddc8582-e630-4e82-9ec2-6e68630963ae",
+  "versionId": "ff138449-58fa-4f23-be2a-4ea8c5db97cb",
   "meta": {
     "instanceId": "e49844d4d683cac13f54084fa5356b54658c12021c031a45c13b3f26e54bf57a"
   },
