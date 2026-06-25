@@ -6,7 +6,7 @@ services:
     container_name: teamcity-server
     restart: unless-stopped
     ports:
-      - "${TEAMCITY_HTTP_PORT:-8111}:8111"
+      - "${TEAMCITY_HTTP_PORT}:8111"
     volumes:
       - teamcity_data:/data/teamcity_server/datadir
       - teamcity_logs:/opt/teamcity/logs
@@ -39,18 +39,20 @@ services:
     container_name: n8n
     restart: unless-stopped
     ports:
-      - "${N8N_HTTP_PORT:-5678}:5678"
+      - "${N8N_HTTP_PORT}:5678"
     environment:
-      N8N_HOST: "${N8N_HOST:-localhost}"
+      N8N_HOST: "${N8N_HOST}"
       N8N_PORT: "5678"
-      N8N_PROTOCOL: "${N8N_PROTOCOL:-http}"
-      WEBHOOK_URL: "${N8N_WEBHOOK_URL:-http://localhost:5678/}"
-      GENERIC_TIMEZONE: "${N8N_TIMEZONE:-Europe/Berlin}"
-      TEAMCITY_TOKEN: "${TEAMCITY_TOKEN:-}"
-      TEAMCITY_BASE_URL_N8N: "${TEAMCITY_BASE_URL_N8N:-http://teamcity-server:8111}"
-      TEAMCITY_AI_STRUCTURE_PATH: "${TEAMCITY_AI_STRUCTURE_PATH:-/data/n8n-exports/teamcity/structure.json}"
-      N8N_RESTRICT_FILE_ACCESS_TO: "${N8N_RESTRICT_FILE_ACCESS_TO:-/data/n8n-exports}"
-      N8N_BLOCK_ENV_ACCESS_IN_NODE: "${N8N_BLOCK_ENV_ACCESS_IN_NODE:-false}"
+      N8N_PROTOCOL: "${N8N_PROTOCOL}"
+      WEBHOOK_URL: "${N8N_WEBHOOK_URL}"
+      GENERIC_TIMEZONE: "${N8N_TIMEZONE}"
+      TEAMCITY_TOKEN: "${TEAMCITY_TOKEN}"
+      TEAMCITY_BASE_URL_N8N: "${TEAMCITY_BASE_URL_N8N}"
+      TEAMCITY_AI_STRUCTURE_PATH: "${TEAMCITY_AI_STRUCTURE_PATH}"
+      TEAMCITY_AI_FAILED_TESTS_PATH: "${TEAMCITY_AI_FAILED_TESTS_PATH}"
+      TEAMCITY_DEFAULT_FAILED_BUILD_TYPE_ID: "${TEAMCITY_DEFAULT_FAILED_BUILD_TYPE_ID}"
+      N8N_RESTRICT_FILE_ACCESS_TO: "${N8N_RESTRICT_FILE_ACCESS_TO}"
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "${N8N_BLOCK_ENV_ACCESS_IN_NODE}"
     volumes:
       - n8n_data:/home/node/.n8n
       - ./data/n8n-exports:/data/n8n-exports
@@ -62,9 +64,9 @@ services:
     container_name: ollama
     restart: unless-stopped
     ports:
-      - "${OLLAMA_HTTP_PORT:-11434}:11434"
+      - "${OLLAMA_HTTP_PORT}:11434"
     environment:
-      OLLAMA_MODEL: "${OLLAMA_MODEL:-qwen2.5:1.5b}"
+      OLLAMA_MODEL: "${OLLAMA_MODEL}"
     volumes:
       - ollama_data:/root/.ollama
 

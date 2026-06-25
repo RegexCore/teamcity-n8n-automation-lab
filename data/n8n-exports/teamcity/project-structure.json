@@ -1,6 +1,6 @@
 {
   "snapshotType": "teamcity_structure",
-  "createdAt": "2026-06-25T16:31:47.095Z",
+  "createdAt": "2026-06-25T17:17:48.717Z",
   "totalProjects": 3,
   "totalBuildTypes": 6,
   "projects": [
@@ -15,7 +15,7 @@
           "projectId": "demo_alpha",
           "paused": false,
           "webUrl": "http://localhost:8111/buildConfiguration/demo_alpha_api?mode=builds",
-          "lastSeenAt": "2026-06-25T16:31:47.095Z"
+          "lastSeenAt": "2026-06-25T17:17:48.717Z"
         },
         {
           "buildTypeId": "demo_alpha_smoke",
@@ -24,7 +24,7 @@
           "projectId": "demo_alpha",
           "paused": false,
           "webUrl": "http://localhost:8111/buildConfiguration/demo_alpha_smoke?mode=builds",
-          "lastSeenAt": "2026-06-25T16:31:47.095Z"
+          "lastSeenAt": "2026-06-25T17:17:48.717Z"
         }
       ],
       "activeBuildTypes": 2,
@@ -41,7 +41,7 @@
           "projectId": "demo_beta",
           "paused": false,
           "webUrl": "http://localhost:8111/buildConfiguration/demo_beta_package?mode=builds",
-          "lastSeenAt": "2026-06-25T16:31:47.095Z"
+          "lastSeenAt": "2026-06-25T17:17:48.717Z"
         },
         {
           "buildTypeId": "demo_beta_unit",
@@ -50,7 +50,7 @@
           "projectId": "demo_beta",
           "paused": false,
           "webUrl": "http://localhost:8111/buildConfiguration/demo_beta_unit?mode=builds",
-          "lastSeenAt": "2026-06-25T16:31:47.095Z"
+          "lastSeenAt": "2026-06-25T17:17:48.717Z"
         }
       ],
       "activeBuildTypes": 2,
@@ -67,7 +67,7 @@
           "projectId": "demo_gamma",
           "paused": false,
           "webUrl": "http://localhost:8111/buildConfiguration/demo_gamma_lint?mode=builds",
-          "lastSeenAt": "2026-06-25T16:31:47.095Z"
+          "lastSeenAt": "2026-06-25T17:17:48.717Z"
         },
         {
           "buildTypeId": "demo_gamma_release",
@@ -76,7 +76,7 @@
           "projectId": "demo_gamma",
           "paused": false,
           "webUrl": "http://localhost:8111/buildConfiguration/demo_gamma_release?mode=builds",
-          "lastSeenAt": "2026-06-25T16:31:47.095Z"
+          "lastSeenAt": "2026-06-25T17:17:48.717Z"
         }
       ],
       "activeBuildTypes": 2,
@@ -86,5 +86,5 @@
   "overviewText": "Projekt: Demo Alpha\n  BuildTypes aktiv: 2\n  BuildTypes pausiert: 0\n  - API Checks [demo_alpha_api]\n  - Smoke [demo_alpha_smoke]\n\nProjekt: Demo Beta\n  BuildTypes aktiv: 2\n  BuildTypes pausiert: 0\n  - Package [demo_beta_package]\n  - Unit Tests [demo_beta_unit]\n\nProjekt: Demo Gamma\n  BuildTypes aktiv: 2\n  BuildTypes pausiert: 0\n  - Lint [demo_gamma_lint]\n  - Release Dry Run [demo_gamma_release]",
   "note": "Projekt -> BuildType. Einzelne Tests kommen erst über Builds und testOccurrences.",
   "teamcityBaseUrl": "http://teamcity-server:8111",
-  "storagePath": "/data/n8n-exports/teamcity/structure.json"
+  "storagePath": "/data/n8n-exports/teamcity/project-structure.json"
 }

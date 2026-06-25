@@ -39,7 +39,7 @@
                                                                   "parameters":  [
                                                                                      {
                                                                                          "name":  "Authorization",
-                                                                                         "value":  "={{ \u0027Bearer \u0027 + ($env.TEAMCITY_TOKEN || $json.teamcity.token || \u0027__TEAMCITY_TOKEN__\u0027) }}"
+                                                                                         "value":  "={{ \u0027Bearer \u0027 + $env.TEAMCITY_TOKEN }}"
                                                                                      },
                                                                                      {
                                                                                          "name":  "Accept",

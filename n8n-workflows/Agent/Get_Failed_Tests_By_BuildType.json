@@ -1,0 +1,352 @@
+{
+  "name": "Get_Failed_Tests_By_BuildType",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "0f3b3a1c-0f4e-4abc-86a4-ff8bcaa12a01",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -360,
+        120
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "1f258f4f-bf1d-4f31-8d8d-04f5bdcc9e22",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -360,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $json || {};\n\nconst buildTypeId = String(\n  input.buildTypeId ??\n  input.build_type_id ??\n  input.buildType ??\n  input.btId ??\n  ''\n).trim();\n\nif (!buildTypeId) {\n  throw new Error('Pflichtfeld fehlt: buildTypeId. Beispiel-Input: { \"buildTypeId\": \"demo_alpha_api\", \"maxTests\": 25 }');\n}\nif (!$env.TEAMCITY_BASE_URL_N8N) throw new Error('Missing env TEAMCITY_BASE_URL_N8N');\nif (!$env.TEAMCITY_TOKEN) throw new Error('Missing env TEAMCITY_TOKEN');\n\nconst maxTestsRaw = Number(input.maxTests ?? input.max_tests ?? 25);\nconst maxTests = Number.isFinite(maxTestsRaw) && maxTestsRaw > 0 ? Math.min(Math.floor(maxTestsRaw), 200) : 25;\n\nreturn [{\n  json: {\n    teamcity: {\n      baseUrl: $env.TEAMCITY_BASE_URL_N8N,\n      token: $env.TEAMCITY_TOKEN\n    },\n    request: {\n      buildTypeId,\n      maxTests,\n      source: 'executeWorkflowTrigger'\n    },\n    generatedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "dbdb6f24-5d8f-46b9-a911-4f6f53dc3b14",
+      "name": "Build Query Context (Execute)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $json || {};\n\nconst buildTypeId = String(\n  input.buildTypeId ??\n  input.build_type_id ??\n  input.buildType ??\n  input.btId ??\n  $env.TEAMCITY_DEFAULT_FAILED_BUILD_TYPE_ID\n).trim();\n\nif (!buildTypeId) {\n  throw new Error('Missing buildTypeId. Set TEAMCITY_DEFAULT_FAILED_BUILD_TYPE_ID in .env or pass buildTypeId manually.');\n}\nif (!$env.TEAMCITY_BASE_URL_N8N) throw new Error('Missing env TEAMCITY_BASE_URL_N8N');\nif (!$env.TEAMCITY_TOKEN) throw new Error('Missing env TEAMCITY_TOKEN');\n\nconst maxTestsRaw = Number(input.maxTests ?? input.max_tests ?? 25);\nconst maxTests = Number.isFinite(maxTestsRaw) && maxTestsRaw > 0 ? Math.min(Math.floor(maxTestsRaw), 200) : 25;\n\nreturn [{\n  json: {\n    teamcity: {\n      baseUrl: $env.TEAMCITY_BASE_URL_N8N,\n      token: $env.TEAMCITY_TOKEN\n    },\n    request: {\n      buildTypeId,\n      maxTests,\n      source: 'manualTrigger'\n    },\n    generatedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "ab76c498-e23d-4317-8f1d-724839aaf4ef",
+      "name": "Build Query Context (Manual)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.teamcity.baseUrl + '/app/rest/builds' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.teamcity.token }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "locator",
+              "value": "={{ 'buildType:(id:' + $json.request.buildTypeId + '),status:FAILURE,state:finished,count:1' }}"
+            },
+            {
+              "name": "fields",
+              "value": "build(id,number,status,state,startDate,finishDate,webUrl,buildType(id,name,projectName,projectId))"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "f0a9fbb0-f02d-4208-b8b4-5fe1c60d4555",
+      "name": "Find Latest Failed Build",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        200,
+        220
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "let ctx = {};\n\ntry {\n  ctx = $items('Build Query Context (Execute)')[0]?.json || {};\n} catch (_) {}\n\nif (!ctx || !Object.keys(ctx).length) {\n  try {\n    ctx = $items('Build Query Context (Manual)')[0]?.json || {};\n  } catch (_) {}\n}\n\nconst src = $json?.body && typeof $json.body === 'object' ? $json.body : ($json || {});\nconst builds = Array.isArray(src.build) ? src.build : [];\nconst failedBuild = builds[0] || null;\n\nreturn [{\n  json: {\n    ...ctx,\n    build: failedBuild\n  }\n}];"
+      },
+      "id": "3e24861f-8a8b-4f15-bd0f-e7cf9db28d6e",
+      "name": "Attach Build Details",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.teamcity.baseUrl + '/app/rest/testOccurrences' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.teamcity.token }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "locator",
+              "value": "={{ $json.build?.id ? ('build:(id:' + $json.build.id + '),status:FAILURE,count:' + $json.request.maxTests) : 'build:(id:0),status:FAILURE,count:0' }}"
+            },
+            {
+              "name": "fields",
+              "value": "testOccurrence(id,name,status,duration,details,build(id,number,webUrl),runOrder)"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "636914f7-3a71-459a-9c87-6602e9b65ff6",
+      "name": "Fetch Failed Tests",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        720,
+        220
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $items('Attach Build Details')[0]?.json || {};\nconst src = $json?.body && typeof $json.body === 'object' ? $json.body : ($json || {});\nconst testOccurrences = Array.isArray(src.testOccurrence) ? src.testOccurrence : [];\n\nconst failedTests = testOccurrences.map((t) => ({\n  name: t.name || null,\n  status: t.status || null,\n  duration: t.duration || null,\n  details: t.details || null,\n  runOrder: t.runOrder || null\n}));\n\nconst snapshot = {\n  snapshotType: 'teamcity_failed_tests',\n  createdAt: new Date().toISOString(),\n  requestSource: ctx.request?.source || null,\n  buildTypeId: ctx.request?.buildTypeId || null,\n  buildId: ctx.build?.id || null,\n  maxTestsRequested: ctx.request?.maxTests || null,\n  teamcityBaseUrl: ctx.teamcity?.baseUrl || null,\n  build: ctx.build || null,\n  totalFailedTests: failedTests.length,\n  failedTests,\n  message: ctx.build\n    ? (failedTests.length ? 'Fehlgeschlagene Tests wurden gefunden.' : 'Build gefunden, aber keine fehlgeschlagenen Tests im Resultat.')\n    : 'Kein fehlgeschlagener Build fuer diese BuildType-ID gefunden.'\n};\n\nreturn [{ json: snapshot }];"
+      },
+      "id": "fe2f8dba-c43f-468f-86d5-5133368fdb7e",
+      "name": "Build Failed Tests Snapshot",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const snapshot = $json;\nif (!$env.TEAMCITY_AI_FAILED_TESTS_PATH) throw new Error('Missing env TEAMCITY_AI_FAILED_TESTS_PATH');\n\nconst buildTypeIdForFile = String(snapshot.buildTypeId || 'unknown-buildType').trim();\nconst hasBuildId = !!snapshot.buildId;\nconst buildIdForFile = hasBuildId ? String(snapshot.buildId) : '';\n\nlet filePath = $env.TEAMCITY_AI_FAILED_TESTS_PATH;\nfilePath = filePath.replace('{buildTypeId}', buildTypeIdForFile);\nfilePath = filePath.replace('{buildId}', buildIdForFile);\n\nconst fileName = hasBuildId\n  ? `failed-tests-${buildTypeIdForFile}-build-${buildIdForFile}.json`\n  : `failed-tests-${buildTypeIdForFile}.json`;\n\nconst jsonText = JSON.stringify(snapshot, null, 2);\n\nreturn [{\n  json: {\n    ...snapshot,\n    filePath\n  },\n  binary: {\n    data: {\n      data: Buffer.from(jsonText, 'utf8').toString('base64'),\n      mimeType: 'application/json',\n      fileName\n    }\n  }\n}];"
+      },
+      "id": "61905db8-88c9-4428-a56c-bf9a559f48c5",
+      "name": "Prepare Failed Tests File",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1240,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "fileName": "={{ $json.filePath }}",
+        "dataPropertyName": "data"
+      },
+      "id": "8f942636-532f-440e-80af-62b4cefebb79",
+      "name": "Write Failed Tests File",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        1500,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prepared = $items('Prepare Failed Tests File')[0]?.json || {};\n\nreturn [{\n  json: {\n    ok: true,\n    message: prepared.message || null,\n    buildTypeId: prepared.buildTypeId || null,\n    buildId: prepared.buildId || null,\n    build: prepared.build || null,\n    totalFailedTests: prepared.totalFailedTests || 0,\n    failedTests: prepared.failedTests || [],\n    filePath: prepared.filePath || null\n  }\n}];"
+      },
+      "id": "5f319041-91f9-4ebb-a0bc-4f3eb997654f",
+      "name": "Final Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        220
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Build Query Context (Execute)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Query Context (Manual)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Query Context (Execute)": {
+      "main": [
+        [
+          {
+            "node": "Find Latest Failed Build",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Query Context (Manual)": {
+      "main": [
+        [
+          {
+            "node": "Find Latest Failed Build",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Latest Failed Build": {
+      "main": [
+        [
+          {
+            "node": "Attach Build Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach Build Details": {
+      "main": [
+        [
+          {
+            "node": "Fetch Failed Tests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Failed Tests": {
+      "main": [
+        [
+          {
+            "node": "Build Failed Tests Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Failed Tests Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Prepare Failed Tests File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Failed Tests File": {
+      "main": [
+        [
+          {
+            "node": "Write Failed Tests File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Failed Tests File": {
+      "main": [
+        [
+          {
+            "node": "Final Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "manual-generated-failed-tests-v3",
+  "meta": {
+    "instanceId": "manual"
+  },
+  "nodeGroups": [],
+  "tags": [
+    {
+      "name": "TeamCity-AI"
+    }
+  ]
+}

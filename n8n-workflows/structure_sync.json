@@ -14,7 +14,7 @@
     },
     {
       "parameters": {
-        "jsCode": "return [{\n  json: {\n    teamcity: {\n      baseUrl: $env.TEAMCITY_BASE_URL_N8N || $env.TEAMCITY_BASE_URL || 'http://teamcity-server:8111',\n      token: $env.TEAMCITY_TOKEN || '__TEAMCITY_TOKEN__'\n    },\n    storage: {\n      structurePath: $env.TEAMCITY_AI_STRUCTURE_PATH || '/data/n8n-exports/teamcity/structure.json'\n    },\n    generatedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "if (!$env.TEAMCITY_BASE_URL_N8N) throw new Error('Missing env TEAMCITY_BASE_URL_N8N');\nif (!$env.TEAMCITY_TOKEN) throw new Error('Missing env TEAMCITY_TOKEN');\nif (!$env.TEAMCITY_AI_STRUCTURE_PATH) throw new Error('Missing env TEAMCITY_AI_STRUCTURE_PATH');\n\nreturn [{\n  json: {\n    teamcity: {\n      baseUrl: $env.TEAMCITY_BASE_URL_N8N,\n      token: $env.TEAMCITY_TOKEN\n    },\n    storage: {\n      structurePath: $env.TEAMCITY_AI_STRUCTURE_PATH\n    },\n    generatedAt: new Date().toISOString()\n  }\n}];"
       },
       "id": "0038caa9-8c56-42f3-b283-df94030c981d",
       "name": "Config",
@@ -87,7 +87,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const snapshot = $json;\nconst jsonText = JSON.stringify(snapshot, null, 2);\n\nreturn [{\n  json: {\n    filePath: snapshot.storagePath || '/data/n8n-exports/teamcity/structure.json',\n    snapshotType: snapshot.snapshotType,\n    createdAt: snapshot.createdAt,\n    totalProjects: snapshot.totalProjects,\n    totalBuildTypes: snapshot.totalBuildTypes,\n    overviewText: snapshot.overviewText\n  },\n  binary: {\n    data: {\n      data: Buffer.from(jsonText, 'utf8').toString('base64'),\n      mimeType: 'application/json',\n      fileName: 'structure.json'\n    }\n  }\n}];"
+        "jsCode": "const snapshot = $json;\nif (!snapshot.storagePath) throw new Error('Missing storagePath from config');\nconst jsonText = JSON.stringify(snapshot, null, 2);\n\nreturn [{\n  json: {\n    filePath: snapshot.storagePath,\n    snapshotType: snapshot.snapshotType,\n    createdAt: snapshot.createdAt,\n    totalProjects: snapshot.totalProjects,\n    totalBuildTypes: snapshot.totalBuildTypes,\n    overviewText: snapshot.overviewText\n  },\n  binary: {\n    data: {\n      data: Buffer.from(jsonText, 'utf8').toString('base64'),\n      mimeType: 'application/json',\n      fileName: 'structure.json'\n    }\n  }\n}];"
       },
       "id": "665bb820-5e15-4fea-98c2-3c9aa63d8d27",
       "name": "Prepare Structure File",

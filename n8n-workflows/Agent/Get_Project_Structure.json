@@ -16,7 +16,7 @@
     },
     {
       "parameters": {
-        "jsCode": "return [{\n  json: {\n    teamcity: {\n      baseUrl: $env.TEAMCITY_BASE_URL_N8N || $env.TEAMCITY_BASE_URL || 'http://teamcity-server:8111',\n      token: $env.TEAMCITY_TOKEN || '__TEAMCITY_TOKEN__'\n    },\n    storage: {\n      structurePath: $env.TEAMCITY_AI_STRUCTURE_PATH || '/data/n8n-exports/teamcity/structure.json'\n    },\n    generatedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "if (!$env.TEAMCITY_BASE_URL_N8N) throw new Error('Missing env TEAMCITY_BASE_URL_N8N');\nif (!$env.TEAMCITY_TOKEN) throw new Error('Missing env TEAMCITY_TOKEN');\nif (!$env.TEAMCITY_AI_STRUCTURE_PATH) throw new Error('Missing env TEAMCITY_AI_STRUCTURE_PATH');\n\nreturn [{\n  json: {\n    teamcity: {\n      baseUrl: $env.TEAMCITY_BASE_URL_N8N,\n      token: $env.TEAMCITY_TOKEN\n    },\n    storage: {\n      structurePath: $env.TEAMCITY_AI_STRUCTURE_PATH\n    },\n    generatedAt: new Date().toISOString()\n  }\n}];"
       },
       "id": "73d0c977-3954-4b04-be0f-1cc9ba8f464b",
       "name": "Config",
