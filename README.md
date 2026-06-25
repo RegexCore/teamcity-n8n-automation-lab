@@ -579,7 +579,7 @@ Planned response:
 ```json
 {
   "answer": "4 + 1 equals 5.",
-  "model": "qwen2.5:1.5b",
+  "model": "qwen3:8b",
   "conversationId": "conv-001",
   "meta": {
     "done": true,
@@ -610,7 +610,7 @@ Planned response:
 This section covers Ollama in this lab:
 
 - local LLM API in Docker
-- small model for end-to-end testing
+- configurable model for end-to-end testing (default: `qwen3:8b`)
 - access from n8n via internal Docker network
 
 ## 3.2 Architecture
@@ -621,7 +621,7 @@ flowchart LR
   U[Host User] -->|http://localhost:11434| OAPI
 
   subgraph OLLAMAContainer[Ollama Container]
-    OAPI --> MODEL[qwen2.5:1.5b]
+    OAPI --> MODEL[qwen3:8b]
     MODEL --> STORE[ollama_data volume]
   end
 ```
@@ -649,14 +649,25 @@ Relevant values in `.env`:
 ```env
 OLLAMA_HTTP_PORT=11434
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=qwen2.5:1.5b
+OLLAMA_MODEL=qwen3:8b
+OLLAMA_GPU_REQUEST=all
+OLLAMA_GPU_DEVICES=all
+OLLAMA_GPU_CAPABILITIES=compute,utility
 ```
 
 Meaning:
 
 - `OLLAMA_HTTP_PORT`: published host port for Ollama API
 - `OLLAMA_BASE_URL`: base URL for host-side API tests
-- `OLLAMA_MODEL`: stable small test model for workflows
+- `OLLAMA_MODEL`: default model used by workflows and API tests
+- `OLLAMA_GPU_REQUEST`: Docker GPU request passed to compose (`all` enables GPU request)
+- `OLLAMA_GPU_DEVICES`: NVIDIA visible devices inside container (`all` or `none` for CPU-only)
+- `OLLAMA_GPU_CAPABILITIES`: requested NVIDIA driver capabilities
+
+CPU-only toggle:
+
+- set `OLLAMA_GPU_DEVICES=none`
+- recreate Ollama container: `docker compose up -d --force-recreate ollama`
 
 ## 3.4 First Start
 
@@ -669,7 +680,6 @@ docker compose up -d --build ollama
 Pull model:
 
 ```powershell
-docker compose exec ollama ollama pull qwen2.5:1.5b
 docker compose exec ollama ollama pull qwen3:8b
 ```
 
@@ -702,12 +712,12 @@ docker compose exec ollama ollama list
 Smoke prompt:
 
 ```powershell
-docker compose exec ollama ollama run qwen2.5:1.5b "Respond with OK"
+docker compose exec ollama ollama run qwen3:8b "Respond with OK"
 ```
 
 n8n workflow for test:
 
-- `n8n-workflows/ollama-smoke-test.json`
+- `n8n-workflows/Misc/ollama-smoke-test.json`
 
 ## 3.7 Troubleshooting
 
@@ -724,7 +734,7 @@ Check in `.env`:
 
 ### 3.7.2 Model not found
 
-- pull model in container: `docker compose exec ollama ollama pull qwen2.5:1.5b`
+- pull model in container: `docker compose exec ollama ollama pull qwen3:8b`
 - run workflow again in n8n
 
 ## 3.8 Step-by-Step Setup
@@ -738,7 +748,7 @@ docker compose up -d --build ollama
 2. Pull model (one-time):
 
 ```powershell
-docker compose exec ollama ollama pull qwen2.5:1.5b
+docker compose exec ollama ollama pull qwen3:8b
 ```
 
 3. Verify model:
@@ -750,12 +760,12 @@ docker compose exec ollama ollama list
 4. Run a short prompt directly in container:
 
 ```powershell
-docker compose exec ollama ollama run qwen2.5:1.5b "Respond with OK"
+docker compose exec ollama ollama run qwen3:8b "Respond with OK"
 ```
 
 5. Import and run n8n smoke workflow:
 
-- file: `n8n-workflows/ollama-smoke-test.json`
+- file: `n8n-workflows/Misc/ollama-smoke-test.json`
 - import in n8n and execute Manual Trigger
 
 ## 4. Repository

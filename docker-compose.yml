@@ -67,6 +67,9 @@ services:
       - "${OLLAMA_HTTP_PORT}:11434"
     environment:
       OLLAMA_MODEL: "${OLLAMA_MODEL}"
+      NVIDIA_VISIBLE_DEVICES: "${OLLAMA_GPU_DEVICES:-all}"
+      NVIDIA_DRIVER_CAPABILITIES: "${OLLAMA_GPU_CAPABILITIES:-compute,utility}"
+    gpus: "${OLLAMA_GPU_REQUEST:-all}"
     volumes:
       - ollama_data:/root/.ollama
 
