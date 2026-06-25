@@ -1,0 +1,214 @@
+{
+  "name": "01_TC_Structure_Sync",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "15324979-939f-4227-8c95-e1c220df04f7",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        500,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    teamcity: {\n      baseUrl: $env.TEAMCITY_BASE_URL || 'http://teamcity-server:8111',\n      token: $env.TEAMCITY_TOKEN || '__TEAMCITY_TOKEN__'\n    },\n    storage: {\n      structurePath: $env.TEAMCITY_AI_STRUCTURE_PATH || '/data/n8n-exports/teamcity/structure.json'\n    },\n    generatedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "0038caa9-8c56-42f3-b283-df94030c981d",
+      "name": "Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        740,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.teamcity.baseUrl + '/app/rest/buildTypes' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.teamcity.token }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "fields",
+              "value": "buildType(id,name,projectName,projectId,webUrl,paused)"
+            }
+          ]
+        }
+      },
+      "id": "a856e3e7-58de-41ae-a06f-d57232c13541",
+      "name": "TeamCity BuildTypes API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        980,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $items('Config')[0].json;\nconst src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst buildTypes = Array.isArray(src.buildType) ? src.buildType : [];\n\nconst projects = {};\n\nfor (const bt of buildTypes) {\n  const projectName = bt.projectName || 'Unbekanntes Projekt';\n\n  if (!projects[projectName]) {\n    projects[projectName] = {\n      projectName,\n      projectId: bt.projectId || null,\n      buildTypes: [],\n      activeBuildTypes: 0,\n      pausedBuildTypes: 0\n    };\n  }\n\n  const item = {\n    buildTypeId: bt.id || null,\n    buildTypeName: bt.name || null,\n    projectName,\n    projectId: bt.projectId || null,\n    paused: !!bt.paused,\n    webUrl: bt.webUrl || null,\n    lastSeenAt: new Date().toISOString()\n  };\n\n  projects[projectName].buildTypes.push(item);\n\n  if (item.paused) {\n    projects[projectName].pausedBuildTypes++;\n  } else {\n    projects[projectName].activeBuildTypes++;\n  }\n}\n\nconst projectList = Object.values(projects)\n  .sort((a, b) => a.projectName.localeCompare(b.projectName));\n\nconst overviewText = projectList.map(p => {\n  const lines = [];\n  lines.push(`Projekt: ${p.projectName}`);\n  lines.push(`  BuildTypes aktiv: ${p.activeBuildTypes}`);\n  lines.push(`  BuildTypes pausiert: ${p.pausedBuildTypes}`);\n\n  for (const bt of p.buildTypes) {\n    lines.push(`  - ${bt.buildTypeName} [${bt.buildTypeId}]${bt.paused ? ' (pausiert)' : ''}`);\n  }\n\n  return lines.join('\\n');\n}).join('\\n\\n');\n\nreturn [{\n  json: {\n    snapshotType: 'teamcity_structure',\n    createdAt: new Date().toISOString(),\n    totalProjects: projectList.length,\n    totalBuildTypes: buildTypes.length,\n    projects: projectList,\n    overviewText,\n    note: 'Projekt -> BuildType. Einzelne Tests kommen erst über Builds und testOccurrences.',\n    teamcityBaseUrl: ctx.teamcity.baseUrl,\n    storagePath: ctx.storage.structurePath\n  }\n}];"
+      },
+      "id": "a8db7aa7-3ccd-4f1e-807a-39c8cfa0753e",
+      "name": "Create Structure Snapshot",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const snapshot = $json;\nconst jsonText = JSON.stringify(snapshot, null, 2);\n\nreturn [{\n  json: {\n    filePath: snapshot.storagePath || '/data/n8n-exports/teamcity/structure.json',\n    snapshotType: snapshot.snapshotType,\n    createdAt: snapshot.createdAt,\n    totalProjects: snapshot.totalProjects,\n    totalBuildTypes: snapshot.totalBuildTypes,\n    overviewText: snapshot.overviewText\n  },\n  binary: {\n    data: {\n      data: Buffer.from(jsonText, 'utf8').toString('base64'),\n      mimeType: 'application/json',\n      fileName: 'structure.json'\n    }\n  }\n}];"
+      },
+      "id": "665bb820-5e15-4fea-98c2-3c9aa63d8d27",
+      "name": "Prepare Structure File",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1460,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fileName": "={{ $json.filePath }}",
+        "dataPropertyName": "data"
+      },
+      "id": "32b4201d-68ff-42c4-8bc2-3c8fe4be21da",
+      "name": "Write Structure File",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        1700,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prepared = $items('Prepare Structure File')[0].json;\n\nreturn [{\n  json: {\n    ok: true,\n    message: 'TeamCity-Struktur wurde gespeichert.',\n    filePath: prepared.filePath,\n    totalProjects: prepared.totalProjects,\n    totalBuildTypes: prepared.totalBuildTypes,\n    overviewText: prepared.overviewText\n  }\n}];"
+      },
+      "id": "338adb23-b2d1-4ce4-ade2-a5251201f422",
+      "name": "Final Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1940,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "TeamCity BuildTypes API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TeamCity BuildTypes API": {
+      "main": [
+        [
+          {
+            "node": "Create Structure Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Structure Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Prepare Structure File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Structure File": {
+      "main": [
+        [
+          {
+            "node": "Write Structure File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Structure File": {
+      "main": [
+        [
+          {
+            "node": "Final Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "manual-generated-save-file-v2",
+  "meta": {
+    "instanceId": "manual"
+  },
+  "nodeGroups": [],
+  "tags": [
+    {
+      "name": "TeamCity-AI"
+    }
+  ]
+}

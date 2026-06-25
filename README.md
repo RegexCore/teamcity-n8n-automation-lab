@@ -392,6 +392,8 @@ N8N_TIMEZONE=Europe/Berlin
 N8N_WEBHOOK_URL=http://localhost:5678/
 TEAMCITY_TOKEN=
 N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+N8N_RESTRICT_FILE_ACCESS_TO=/data/n8n-exports
+TEAMCITY_AI_STRUCTURE_PATH=/data/n8n-exports/teamcity/structure.json
 ```
 
 Meaning:
@@ -404,6 +406,8 @@ Meaning:
 - `N8N_WEBHOOK_URL`: base for webhook URLs
 - `TEAMCITY_TOKEN`: TeamCity PAT for API calls from n8n workflows
 - `N8N_BLOCK_ENV_ACCESS_IN_NODE`: must be `false` in this lab if nodes access `$env`
+- `N8N_RESTRICT_FILE_ACCESS_TO`: allowed paths for file read/write nodes
+- `TEAMCITY_AI_STRUCTURE_PATH`: target file path for structure snapshots in workflow `01_TC_Structure_Sync`
 
 Token behavior:
 
@@ -424,6 +428,10 @@ Create the owner account on first open.
 Persistent volume:
 
 - `n8n_data`
+
+Additional bind mount for local file snapshots:
+
+- `./data/n8n-exports:/data/n8n-exports`
 
 Full clean reset:
 
