@@ -22,8 +22,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
       "typeVersion": 1,
       "position": [
-        6096,
-        3008
+        5968,
+        3024
       ],
       "id": "561b9e4c-0039-423b-a70c-48ddf69b9191",
       "name": "Ollama Chat Model",
@@ -203,6 +203,17 @@
       ],
       "id": "c28075cd-4528-4d3b-b6a8-7e2a22d2f36f",
       "name": "HTTP Request"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        6144,
+        3024
+      ],
+      "id": "b6bd8851-0acb-4554-a1b0-c161e619154e",
+      "name": "Simple Memory"
     }
   ],
   "pinData": {},
@@ -294,6 +305,17 @@
           }
         ]
       ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -302,7 +324,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "04bebdb2-2156-4bf4-9b34-74c72b753f5b",
+  "versionId": "83719557-f900-427d-a613-98c3a376ee5e",
   "meta": {
     "instanceId": "e49844d4d683cac13f54084fa5356b54658c12021c031a45c13b3f26e54bf57a"
   },
