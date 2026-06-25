@@ -1,30 +1,30 @@
 {
-  "name": "01_Get_Project_Structure",
+  "name": "Get_Project_Structure",
   "nodes": [
     {
       "parameters": {
         "inputSource": "passthrough"
       },
-      "id": "75a93842-2442-491a-971d-0d617ae0a4a5",
+      "id": "143d6543-e4bb-41aa-920e-f4dbd6f86313",
       "typeVersion": 1.1,
       "name": "When Executed by Another Workflow",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "position": [
-        224,
-        80
+        0,
+        0
       ]
     },
     {
       "parameters": {
         "jsCode": "return [{\n  json: {\n    teamcity: {\n      baseUrl: $env.TEAMCITY_BASE_URL_N8N || $env.TEAMCITY_BASE_URL || 'http://teamcity-server:8111',\n      token: $env.TEAMCITY_TOKEN || '__TEAMCITY_TOKEN__'\n    },\n    storage: {\n      structurePath: $env.TEAMCITY_AI_STRUCTURE_PATH || '/data/n8n-exports/teamcity/structure.json'\n    },\n    generatedAt: new Date().toISOString()\n  }\n}];"
       },
-      "id": "6f7ceed9-3b6e-4411-9912-0f58f9a7a3d6",
+      "id": "73d0c977-3954-4b04-be0f-1cc9ba8f464b",
       "name": "Config",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        384,
-        80
+        160,
+        0
       ]
     },
     {
@@ -60,13 +60,13 @@
           }
         }
       },
-      "id": "4886e9b9-f2e6-43c5-92c8-624df922336a",
+      "id": "8d7ead42-c7a7-453a-9f69-2743d536e675",
       "name": "TeamCity BuildTypes API",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
       "position": [
-        624,
-        80
+        400,
+        0
       ],
       "retryOnFail": true,
       "maxTries": 3,
@@ -77,26 +77,26 @@
       "parameters": {
         "jsCode": "const ctx = $items('Config')[0].json;\nconst src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst buildTypes = Array.isArray(src.buildType) ? src.buildType : [];\n\nconst projects = {};\n\nfor (const bt of buildTypes) {\n  const projectName = bt.projectName || 'Unbekanntes Projekt';\n\n  if (!projects[projectName]) {\n    projects[projectName] = {\n      projectName,\n      projectId: bt.projectId || null,\n      buildTypes: [],\n      activeBuildTypes: 0,\n      pausedBuildTypes: 0\n    };\n  }\n\n  const item = {\n    buildTypeId: bt.id || null,\n    buildTypeName: bt.name || null,\n    projectName,\n    projectId: bt.projectId || null,\n    paused: !!bt.paused,\n    webUrl: bt.webUrl || null,\n    lastSeenAt: new Date().toISOString()\n  };\n\n  projects[projectName].buildTypes.push(item);\n\n  if (item.paused) {\n    projects[projectName].pausedBuildTypes++;\n  } else {\n    projects[projectName].activeBuildTypes++;\n  }\n}\n\nconst projectList = Object.values(projects)\n  .sort((a, b) => a.projectName.localeCompare(b.projectName));\n\nconst overviewText = projectList.map(p => {\n  const lines = [];\n  lines.push(`Projekt: ${p.projectName}`);\n  lines.push(`  BuildTypes aktiv: ${p.activeBuildTypes}`);\n  lines.push(`  BuildTypes pausiert: ${p.pausedBuildTypes}`);\n\n  for (const bt of p.buildTypes) {\n    lines.push(`  - ${bt.buildTypeName} [${bt.buildTypeId}]${bt.paused ? ' (pausiert)' : ''}`);\n  }\n\n  return lines.join('\\n');\n}).join('\\n\\n');\n\nreturn [{\n  json: {\n    snapshotType: 'teamcity_structure',\n    createdAt: new Date().toISOString(),\n    totalProjects: projectList.length,\n    totalBuildTypes: buildTypes.length,\n    projects: projectList,\n    overviewText,\n    note: 'Projekt -> BuildType. Einzelne Tests kommen erst über Builds und testOccurrences.',\n    teamcityBaseUrl: ctx.teamcity.baseUrl,\n    storagePath: ctx.storage.structurePath\n  }\n}];"
       },
-      "id": "467f7a6a-62f5-4a93-b7de-b7f03fe98d3d",
+      "id": "5da845a8-88bf-4b33-8264-50254cc0832c",
       "name": "Create Structure Snapshot",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        864,
-        80
+        640,
+        0
       ]
     },
     {
       "parameters": {
         "jsCode": "const snapshot = $json;\nconst jsonText = JSON.stringify(snapshot, null, 2);\n\nreturn [{\n  json: {\n    filePath: snapshot.storagePath || '/data/n8n-exports/teamcity/structure.json',\n    snapshotType: snapshot.snapshotType,\n    createdAt: snapshot.createdAt,\n    totalProjects: snapshot.totalProjects,\n    totalBuildTypes: snapshot.totalBuildTypes,\n    overviewText: snapshot.overviewText\n  },\n  binary: {\n    data: {\n      data: Buffer.from(jsonText, 'utf8').toString('base64'),\n      mimeType: 'application/json',\n      fileName: 'structure.json'\n    }\n  }\n}];"
       },
-      "id": "23ad93eb-090d-4f46-bc2f-98047d35fd71",
+      "id": "9d06480f-5601-4151-9dcc-c7b25f09e929",
       "name": "Prepare Structure File",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1104,
-        80
+        880,
+        0
       ]
     },
     {
@@ -104,26 +104,26 @@
         "fileName": "={{ $json.filePath }}",
         "options": {}
       },
-      "id": "450d2e69-a100-4702-b63c-5aa82c99e493",
+      "id": "5266ded5-0f67-4468-9238-f27e33c6197d",
       "name": "Write Structure File",
       "type": "n8n-nodes-base.writeBinaryFile",
       "typeVersion": 1,
       "position": [
-        1344,
-        80
+        1120,
+        0
       ]
     },
     {
       "parameters": {
         "jsCode": "const prepared = $items('Prepare Structure File')[0].json;\n\nreturn [{\n  json: {\n    ok: true,\n    message: 'TeamCity-Struktur wurde gespeichert.',\n    filePath: prepared.filePath,\n    totalProjects: prepared.totalProjects,\n    totalBuildTypes: prepared.totalBuildTypes,\n    overviewText: prepared.overviewText\n  }\n}];"
       },
-      "id": "6d124f87-c763-4e37-a2c0-db9b819805c1",
+      "id": "ebd57dbb-56af-4a7d-b1c9-94d82db012a0",
       "name": "Final Output",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1584,
-        80
+        1360,
+        0
       ]
     }
   ],
@@ -196,18 +196,18 @@
       ]
     }
   },
-  "active": true,
+  "active": false,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "15adb3e8-2336-4c92-9fa7-efc87ef21655",
+  "versionId": "cfb126f8-d471-49d0-886b-b741eb259343",
   "meta": {
     "instanceId": "e49844d4d683cac13f54084fa5356b54658c12021c031a45c13b3f26e54bf57a"
   },
   "nodeGroups": [],
-  "id": "k6otzC79eXMxdRF3",
+  "id": "EW1BbcUZQjh6keYv",
   "tags": [
     {
       "updatedAt": "2026-06-25T07:00:37.195Z",

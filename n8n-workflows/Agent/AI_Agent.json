@@ -1,17 +1,17 @@
 {
-  "name": "02_AI_Agent",
+  "name": "AI_Agent",
   "nodes": [
     {
       "parameters": {
         "jsCode": "const src = $input.first()?.json ?? {};\nlet output = src.output ?? src.text ?? src.response ?? src.answer ?? '';\n\nif (typeof output !== 'string') {\n  try {\n    output = JSON.stringify(output, null, 2);\n  } catch (_) {\n    output = String(output);\n  }\n}\n\nreturn [{\n  json: {\n    output: output,\n    text: output\n  }\n}];"
       },
-      "id": "5dfad880-1601-4274-b390-78444a798b37",
+      "id": "791f6f64-f5c0-4802-9fdb-9bdd397815b9",
       "name": "Select Output1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        6528,
-        2800
+        416,
+        352
       ]
     },
     {
@@ -22,10 +22,10 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
       "typeVersion": 1,
       "position": [
-        5968,
-        3024
+        -144,
+        576
       ],
-      "id": "561b9e4c-0039-423b-a70c-48ddf69b9191",
+      "id": "25fe807d-3a66-487e-b352-40d52fd02d48",
       "name": "Ollama Chat Model",
       "credentials": {
         "ollamaApi": {
@@ -43,10 +43,10 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        6096,
-        2800
+        -16,
+        352
       ],
-      "id": "1a5cfc32-bb37-4426-b878-d4397fb9bbea",
+      "id": "28efd5a2-ebbf-450b-b584-26226291effe",
       "name": "AI Agent",
       "alwaysOutputData": false
     },
@@ -54,13 +54,13 @@
       "parameters": {
         "jsCode": "const items = $input.all();\n\nlet requestItems = [];\ntry {\n  requestItems = $items('Build Manual Request');\n} catch (_) {}\n\nif (!requestItems.length) {\n  try {\n    requestItems = $items('Build Chat Request');\n  } catch (_) {}\n}\n\nreturn items.map((item, index) => {\n  const src = item.json || {};\n  const body = src.body && typeof src.body === 'object' ? src.body : {};\n  const payload = Object.keys(body).length ? body : src;\n  const requestJson = requestItems[index]?.json ?? {};\n  const responseText = String(payload.response ?? '');\n\n  return {\n    json: {\n      mode: requestJson.mode ?? null,\n      input_question: requestJson.input_question ?? null,\n      llm_request: requestJson.llm_request ?? null,\n      llm_response: responseText,\n      text: responseText,\n      output: responseText,\n      model: payload.model ?? requestJson.llm_request?.model ?? null,\n      done: payload.done ?? null,\n      total_duration: payload.total_duration ?? null\n    }\n  };\n});"
       },
-      "id": "3f86b269-7487-49e3-b905-a11b65174908",
+      "id": "efc4e9f6-f21c-4c24-96e4-19ab10eaf89d",
       "name": "Select Output",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        6704,
-        2528
+        592,
+        80
       ]
     },
     {
@@ -109,13 +109,13 @@
           }
         }
       },
-      "id": "996a0508-3018-40d7-b907-a2b4953c61bf",
+      "id": "7734c122-0653-4ca9-966d-496e8d7dc684",
       "name": "Call Ollama",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
       "position": [
-        6416,
-        2528
+        304,
+        80
       ],
       "retryOnFail": true,
       "maxTries": 3,
@@ -125,26 +125,26 @@
       "parameters": {
         "jsCode": "const systemPrompt = 'Answer in English and explain your answer clearly.';\nconst question = ($json.chatInput || '').toString().trim();\n\nreturn [\n  {\n    json: {\n      mode: 'chat-input',\n      input_question: question,\n      llm_request: {\n        endpoint: 'http://ollama:11434/api/generate',\n        model: 'qwen2.5:1.5b',\n        stream: false,\n        options: {\n          temperature: 0.1,\n          top_p: 0.9,\n          num_predict: 180\n        },\n        system_prompt: systemPrompt,\n        prompt: question\n      }\n    }\n  }\n];"
       },
-      "id": "880b75fc-6152-4062-804a-3f9d08586afa",
+      "id": "d6060a7c-7491-4361-b271-8244117a642d",
       "name": "Build Chat Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        6112,
-        2624
+        0,
+        176
       ]
     },
     {
       "parameters": {
         "options": {}
       },
-      "id": "2a5a4ed6-4f93-4900-a176-1ea2ad7c21d2",
+      "id": "b15b8b99-48ec-4eae-a307-e764c6173698",
       "name": "Chat Trigger",
       "type": "@n8n/n8n-nodes-langchain.chatTrigger",
       "typeVersion": 1.1,
       "position": [
-        5776,
-        2848
+        -336,
+        400
       ],
       "webhookId": "ae71b698-e88d-47f3-b540-c4273783bf02"
     },
@@ -152,24 +152,35 @@
       "parameters": {
         "jsCode": "const systemPrompt = 'Answer in English and explain your answer clearly.';\nconst prompt = 'What is 4 + 1?';\n\nreturn [\n  {\n    json: {\n      mode: 'manual-fixed',\n      input_question: prompt,\n      llm_request: {\n        endpoint: 'http://ollama:11434/api/generate',\n        model: 'qwen2.5:1.5b',\n        stream: false,\n        options: {\n          temperature: 0.1,\n          top_p: 0.9,\n          num_predict: 180\n        },\n        system_prompt: systemPrompt,\n        prompt\n      }\n    }\n  }\n];"
       },
-      "id": "fb3265f1-7696-4625-8fff-b5b41e5d1b76",
+      "id": "2e53872d-a3c7-4a52-98e1-ed221ba87d40",
       "name": "Build Manual Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        6112,
-        2448
+        0,
+        0
       ]
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        32,
+        576
+      ],
+      "id": "c9f153aa-0f53-4c1e-822e-dab7e15bd42f",
+      "name": "Simple Memory"
     },
     {
       "parameters": {
         "description": "Use this tool whenever the user asks about the TeamCity project structure, projects, build configurations, folders or modules.\nThis tool retrieves the latest project structure from TeamCity and returns it. No Input data necessary!",
         "workflowId": {
           "__rl": true,
-          "value": "k6otzC79eXMxdRF3",
+          "value": "EW1BbcUZQjh6keYv",
           "mode": "list",
-          "cachedResultUrl": "/workflow/k6otzC79eXMxdRF3",
-          "cachedResultName": "01_Get_Project_Structure"
+          "cachedResultUrl": "/workflow/EW1BbcUZQjh6keYv",
+          "cachedResultName": "Get_Project_Structure"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
@@ -183,11 +194,11 @@
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 2.2,
       "position": [
-        6336,
-        3008
+        224,
+        560
       ],
-      "id": "b4e91795-8a28-447b-80fc-e57ee50fd954",
-      "name": "Call '01_Get_Project_Structure'"
+      "id": "827c6242-ca55-4a53-ae2a-71e9d97dda31",
+      "name": "Call 'Get_Project_Structure'"
     },
     {
       "parameters": {
@@ -198,22 +209,11 @@
       "type": "n8n-nodes-base.httpRequestTool",
       "typeVersion": 4.4,
       "position": [
-        6528,
-        3008
+        416,
+        560
       ],
-      "id": "c28075cd-4528-4d3b-b6a8-7e2a22d2f36f",
+      "id": "6bc59b01-5db3-4095-bc44-d41d4d6cf6f4",
       "name": "HTTP Request"
-    },
-    {
-      "parameters": {},
-      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
-      "typeVersion": 1.4,
-      "position": [
-        6144,
-        3024
-      ],
-      "id": "b6bd8851-0acb-4554-a1b0-c161e619154e",
-      "name": "Simple Memory"
     }
   ],
   "pinData": {},
@@ -284,7 +284,18 @@
         ]
       ]
     },
-    "Call '01_Get_Project_Structure'": {
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Get_Project_Structure'": {
       "ai_tool": [
         [
           {
@@ -305,17 +316,6 @@
           }
         ]
       ]
-    },
-    "Simple Memory": {
-      "ai_memory": [
-        [
-          {
-            "node": "AI Agent",
-            "type": "ai_memory",
-            "index": 0
-          }
-        ]
-      ]
     }
   },
   "active": false,
@@ -324,12 +324,12 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "83719557-f900-427d-a613-98c3a376ee5e",
+  "versionId": "cf3e8f9b-443e-444a-ace5-c25f53a3d96b",
   "meta": {
     "instanceId": "e49844d4d683cac13f54084fa5356b54658c12021c031a45c13b3f26e54bf57a"
   },
   "nodeGroups": [],
-  "id": "ha7OrwBF7bpWOq6c",
+  "id": "gfMLTXA2ZfUhJCqJ",
   "tags": [
     {
       "updatedAt": "2026-06-25T07:00:37.195Z",
