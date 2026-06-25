@@ -1,0 +1,1060 @@
+[
+  {
+    "updatedAt": "2026-06-25T17:45:27.203Z",
+    "createdAt": "2026-06-25T16:00:25.901Z",
+    "id": "gfMLTXA2ZfUhJCqJ",
+    "name": "AI_Agent",
+    "description": null,
+    "active": false,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "jsCode": "const src = $input.first()?.json ?? {};\nlet output = src.output ?? src.text ?? src.response ?? src.answer ?? '';\n\nif (typeof output !== 'string') {\n  try {\n    output = JSON.stringify(output, null, 2);\n  } catch (_) {\n    output = String(output);\n  }\n}\n\nreturn [{\n  json: {\n    output: output,\n    text: output\n  }\n}];"
+        },
+        "id": "791f6f64-f5c0-4802-9fdb-9bdd397815b9",
+        "name": "Select Output1",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          416,
+          352
+        ]
+      },
+      {
+        "parameters": {
+          "model": "qwen3:8b",
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+        "typeVersion": 1,
+        "position": [
+          -144,
+          576
+        ],
+        "id": "25fe807d-3a66-487e-b352-40d52fd02d48",
+        "name": "Ollama Chat Model",
+        "credentials": {
+          "ollamaApi": {
+            "id": "WSOWGsUt5EbkmSg9",
+            "name": "Ollama account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "options": {
+            "systemMessage": "You are a helpful assistant for TeamCity. If the user asks for project structure, project overview, build configurations, folders, modules, or similar (German or English), always call the workflow tool first and then answer with a concise summary. If the user asks for failed tests of a specific build type, call the failed-tests workflow tool with strict tool arguments. The arguments must be valid JSON with exactly one field: {\"input\":\"<buildTypeId>\"}. Never add any other field. Never send maxTests. Never send trailing text, markdown, or code fences in tool arguments. If buildTypeId is missing or ambiguous, ask a short clarification question first."
+          }
+        },
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 3.1,
+        "position": [
+          -16,
+          352
+        ],
+        "id": "28efd5a2-ebbf-450b-b584-26226291effe",
+        "name": "AI Agent",
+        "alwaysOutputData": false
+      },
+      {
+        "parameters": {
+          "jsCode": "const items = $input.all();\n\nlet requestItems = [];\ntry {\n  requestItems = $items('Build Manual Request');\n} catch (_) {}\n\nif (!requestItems.length) {\n  try {\n    requestItems = $items('Build Chat Request');\n  } catch (_) {}\n}\n\nreturn items.map((item, index) => {\n  const src = item.json || {};\n  const body = src.body && typeof src.body === 'object' ? src.body : {};\n  const payload = Object.keys(body).length ? body : src;\n  const requestJson = requestItems[index]?.json ?? {};\n  const responseText = String(payload.response ?? '');\n\n  return {\n    json: {\n      mode: requestJson.mode ?? null,\n      input_question: requestJson.input_question ?? null,\n      llm_request: requestJson.llm_request ?? null,\n      llm_response: responseText,\n      text: responseText,\n      output: responseText,\n      model: payload.model ?? requestJson.llm_request?.model ?? null,\n      done: payload.done ?? null,\n      total_duration: payload.total_duration ?? null\n    }\n  };\n});"
+        },
+        "id": "efc4e9f6-f21c-4c24-96e4-19ab10eaf89d",
+        "name": "Select Output",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          592,
+          80
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://ollama:11434/api/generate",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "model",
+                "value": "={{ $json.llm_request.model }}"
+              },
+              {
+                "name": "prompt",
+                "value": "={{ $json.llm_request.prompt }}"
+              },
+              {
+                "name": "system",
+                "value": "={{ $json.llm_request.system_prompt }}"
+              },
+              {
+                "name": "stream",
+                "value": "={{ $json.llm_request.stream }}"
+              },
+              {
+                "name": "options",
+                "value": "={{ $json.llm_request.options }}"
+              }
+            ]
+          },
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            }
+          }
+        },
+        "id": "7734c122-0653-4ca9-966d-496e8d7dc684",
+        "name": "Call Ollama",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4,
+        "position": [
+          304,
+          80
+        ],
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 2000
+      },
+      {
+        "parameters": {
+          "jsCode": "const systemPrompt = 'Answer in English and explain your answer clearly.';\nconst question = ($json.chatInput || '').toString().trim();\n\nreturn [\n  {\n    json: {\n      mode: 'chat-input',\n      input_question: question,\n      llm_request: {\n        endpoint: 'http://ollama:11434/api/generate',\n        model: 'qwen2.5:1.5b',\n        stream: false,\n        options: {\n          temperature: 0.1,\n          top_p: 0.9,\n          num_predict: 180\n        },\n        system_prompt: systemPrompt,\n        prompt: question\n      }\n    }\n  }\n];"
+        },
+        "id": "d6060a7c-7491-4361-b271-8244117a642d",
+        "name": "Build Chat Request",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          0,
+          176
+        ]
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "id": "b15b8b99-48ec-4eae-a307-e764c6173698",
+        "name": "Chat Trigger",
+        "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          -336,
+          400
+        ],
+        "webhookId": "ae71b698-e88d-47f3-b540-c4273783bf02"
+      },
+      {
+        "parameters": {
+          "jsCode": "const systemPrompt = 'Answer in English and explain your answer clearly.';\nconst prompt = 'What is 4 + 1?';\n\nreturn [\n  {\n    json: {\n      mode: 'manual-fixed',\n      input_question: prompt,\n      llm_request: {\n        endpoint: 'http://ollama:11434/api/generate',\n        model: 'qwen2.5:1.5b',\n        stream: false,\n        options: {\n          temperature: 0.1,\n          top_p: 0.9,\n          num_predict: 180\n        },\n        system_prompt: systemPrompt,\n        prompt\n      }\n    }\n  }\n];"
+        },
+        "id": "2e53872d-a3c7-4a52-98e1-ed221ba87d40",
+        "name": "Build Manual Request",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          0,
+          0
+        ]
+      },
+      {
+        "parameters": {},
+        "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "typeVersion": 1.4,
+        "position": [
+          32,
+          576
+        ],
+        "id": "c9f153aa-0f53-4c1e-822e-dab7e15bd42f",
+        "name": "Simple Memory"
+      },
+      {
+        "parameters": {
+          "description": "Use this tool whenever the user asks about the TeamCity project structure, projects, build configurations, folders or modules.\nThis tool retrieves the latest project structure from TeamCity and returns it. No Input data necessary!",
+          "workflowId": {
+            "__rl": true,
+            "value": "EW1BbcUZQjh6keYv",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/EW1BbcUZQjh6keYv",
+            "cachedResultName": "Get_Project_Structure"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {},
+            "matchingColumns": [],
+            "schema": [],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          }
+        },
+        "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+        "typeVersion": 2.2,
+        "position": [
+          224,
+          560
+        ],
+        "id": "827c6242-ca55-4a53-ae2a-71e9d97dda31",
+        "name": "Call 'Get_Project_Structure'"
+      },
+      {
+        "parameters": {
+          "description": "Use this tool whenever the user asks for failed tests for a specific TeamCity build type.\n\nInput contract:\n- input: required plain string containing only the buildTypeId (example: demo_alpha_api)\n\nSTRICT ARGUMENT FORMAT:\n- Tool arguments must be exactly: {\"input\":\"demo_alpha_api\"}\n- Do not include maxTests.\n- Do not include additional keys.\n- Do not include markdown or explanatory text in arguments.",
+          "workflowId": {
+            "__rl": true,
+            "value": "Get_Failed_Tests_By_BuildType",
+            "mode": "name"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "input": "={{ $fromAI('input', 'TeamCity buildTypeId as plain string, e.g. demo_alpha_api') }}"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "input",
+                "displayName": "input",
+                "required": true,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string"
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          }
+        },
+        "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+        "typeVersion": 2.2,
+        "position": [
+          32,
+          656
+        ],
+        "id": "62a42635-12f4-4f7b-9e17-d3f4e54b6b2a",
+        "name": "Call 'Get_Failed_Tests_By_BuildType'"
+      },
+      {
+        "parameters": {
+          "toolDescription": "Use this tool whenever the user asks for a HTTP test.",
+          "url": "=https://jsonplaceholder.typicode.com/todos/1",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequestTool",
+        "typeVersion": 4.4,
+        "position": [
+          416,
+          560
+        ],
+        "id": "6bc59b01-5db3-4095-bc44-d41d4d6cf6f4",
+        "name": "HTTP Request"
+      }
+    ],
+    "connections": {
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Select Output1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Ollama Chat Model": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Call Ollama": {
+        "main": [
+          [
+            {
+              "node": "Select Output",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Chat Request": {
+        "main": [
+          [
+            {
+              "node": "Call Ollama",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Chat Trigger": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Manual Request": {
+        "main": [
+          [
+            {
+              "node": "Call Ollama",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Simple Memory": {
+        "ai_memory": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_memory",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Call 'Get_Project_Structure'": {
+        "ai_tool": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_tool",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Call 'Get_Failed_Tests_By_BuildType'": {
+        "ai_tool": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_tool",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "HTTP Request": {
+        "ai_tool": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_tool",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "binaryMode": "separate",
+      "availableInMCP": false
+    },
+    "staticData": null,
+    "meta": {
+      "instanceId": "e49844d4d683cac13f54084fa5356b54658c12021c031a45c13b3f26e54bf57a"
+    },
+    "nodeGroups": [],
+    "pinData": {},
+    "versionId": "77f5fb8b-3ee6-4d56-b037-211925bc7e66",
+    "activeVersionId": null,
+    "versionCounter": 22,
+    "triggerCount": 0,
+    "sourceWorkflowId": null,
+    "tags": [
+      {
+        "updatedAt": "2026-06-25T07:00:37.195Z",
+        "createdAt": "2026-06-25T07:00:37.195Z",
+        "id": "FayBN1pexKl90DVB",
+        "name": "TeamCity-AI"
+      }
+    ],
+    "shared": [
+      {
+        "updatedAt": "2026-06-25T16:00:25.903Z",
+        "createdAt": "2026-06-25T16:00:25.903Z",
+        "role": "workflow:owner",
+        "workflowId": "gfMLTXA2ZfUhJCqJ",
+        "projectId": "3nuxCpe6E1rTbVSO",
+        "project": {
+          "updatedAt": "2026-06-23T19:11:12.657Z",
+          "createdAt": "2026-06-23T19:10:24.581Z",
+          "id": "3nuxCpe6E1rTbVSO",
+          "name": "testuser testuser <test@test.local>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "customTelemetryTags": [],
+          "creatorId": "71a695d0-c099-4891-be3a-2e77a978d613"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": null,
+      "description": null
+    }
+  },
+  {
+    "updatedAt": "2026-06-25T17:17:02.738Z",
+    "createdAt": "2026-06-25T16:00:34.055Z",
+    "id": "EW1BbcUZQjh6keYv",
+    "name": "Get_Project_Structure",
+    "description": null,
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "inputSource": "passthrough"
+        },
+        "id": "d5695020-569a-4f6d-8ea7-3ac43d71262c",
+        "typeVersion": 1.1,
+        "name": "When Executed by Another Workflow",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "position": [
+          1632,
+          320
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "if (!$env.TEAMCITY_BASE_URL_N8N) throw new Error('Missing env TEAMCITY_BASE_URL_N8N');\nif (!$env.TEAMCITY_TOKEN) throw new Error('Missing env TEAMCITY_TOKEN');\nif (!$env.TEAMCITY_AI_STRUCTURE_PATH) throw new Error('Missing env TEAMCITY_AI_STRUCTURE_PATH');\n\nreturn [{\n  json: {\n    teamcity: {\n      baseUrl: $env.TEAMCITY_BASE_URL_N8N,\n      token: $env.TEAMCITY_TOKEN\n    },\n    storage: {\n      structurePath: $env.TEAMCITY_AI_STRUCTURE_PATH\n    },\n    generatedAt: new Date().toISOString()\n  }\n}];"
+        },
+        "id": "f70bf9a8-cb96-4ae3-8a16-3a1cfb256662",
+        "name": "Config",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1792,
+          320
+        ]
+      },
+      {
+        "parameters": {
+          "url": "={{ $json.teamcity.baseUrl + '/app/rest/buildTypes' }}",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "fields",
+                "value": "buildType(id,name,projectName,projectId,webUrl,paused)"
+              }
+            ]
+          },
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $json.teamcity.token }}"
+              },
+              {
+                "name": "Accept",
+                "value": "application/json"
+              }
+            ]
+          },
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            }
+          }
+        },
+        "id": "cab25fb9-b453-4b8d-af57-c19f3bc1f431",
+        "name": "TeamCity BuildTypes API",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4,
+        "position": [
+          2032,
+          320
+        ],
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 2000,
+        "continueOnFail": true
+      },
+      {
+        "parameters": {
+          "jsCode": "const ctx = $items('Config')[0].json;\nconst src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst buildTypes = Array.isArray(src.buildType) ? src.buildType : [];\n\nconst projects = {};\n\nfor (const bt of buildTypes) {\n  const projectName = bt.projectName || 'Unbekanntes Projekt';\n\n  if (!projects[projectName]) {\n    projects[projectName] = {\n      projectName,\n      projectId: bt.projectId || null,\n      buildTypes: [],\n      activeBuildTypes: 0,\n      pausedBuildTypes: 0\n    };\n  }\n\n  const item = {\n    buildTypeId: bt.id || null,\n    buildTypeName: bt.name || null,\n    projectName,\n    projectId: bt.projectId || null,\n    paused: !!bt.paused,\n    webUrl: bt.webUrl || null,\n    lastSeenAt: new Date().toISOString()\n  };\n\n  projects[projectName].buildTypes.push(item);\n\n  if (item.paused) {\n    projects[projectName].pausedBuildTypes++;\n  } else {\n    projects[projectName].activeBuildTypes++;\n  }\n}\n\nconst projectList = Object.values(projects)\n  .sort((a, b) => a.projectName.localeCompare(b.projectName));\n\nconst overviewText = projectList.map(p => {\n  const lines = [];\n  lines.push(`Projekt: ${p.projectName}`);\n  lines.push(`  BuildTypes aktiv: ${p.activeBuildTypes}`);\n  lines.push(`  BuildTypes pausiert: ${p.pausedBuildTypes}`);\n\n  for (const bt of p.buildTypes) {\n    lines.push(`  - ${bt.buildTypeName} [${bt.buildTypeId}]${bt.paused ? ' (pausiert)' : ''}`);\n  }\n\n  return lines.join('\\n');\n}).join('\\n\\n');\n\nreturn [{\n  json: {\n    snapshotType: 'teamcity_structure',\n    createdAt: new Date().toISOString(),\n    totalProjects: projectList.length,\n    totalBuildTypes: buildTypes.length,\n    projects: projectList,\n    overviewText,\n    note: 'Projekt -> BuildType. Einzelne Tests kommen erst über Builds und testOccurrences.',\n    teamcityBaseUrl: ctx.teamcity.baseUrl,\n    storagePath: ctx.storage.structurePath\n  }\n}];"
+        },
+        "id": "f12c40fe-6629-465f-bc73-90b763a60ca5",
+        "name": "Create Structure Snapshot",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2272,
+          320
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const snapshot = $json;\nconst jsonText = JSON.stringify(snapshot, null, 2);\n\nreturn [{\n  json: {\n    filePath: snapshot.storagePath || '/data/n8n-exports/teamcity/structure.json',\n    snapshotType: snapshot.snapshotType,\n    createdAt: snapshot.createdAt,\n    totalProjects: snapshot.totalProjects,\n    totalBuildTypes: snapshot.totalBuildTypes,\n    overviewText: snapshot.overviewText\n  },\n  binary: {\n    data: {\n      data: Buffer.from(jsonText, 'utf8').toString('base64'),\n      mimeType: 'application/json',\n      fileName: 'structure.json'\n    }\n  }\n}];"
+        },
+        "id": "a0fe70c1-1c1f-4f94-94e1-32dad4c4997a",
+        "name": "Prepare Structure File",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2512,
+          320
+        ]
+      },
+      {
+        "parameters": {
+          "fileName": "={{ $json.filePath }}",
+          "options": {}
+        },
+        "id": "054c6832-6be1-4735-a858-4f4a236b447e",
+        "name": "Write Structure File",
+        "type": "n8n-nodes-base.writeBinaryFile",
+        "typeVersion": 1,
+        "position": [
+          2752,
+          320
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const prepared = $items('Prepare Structure File')[0].json;\n\nreturn [{\n  json: {\n    ok: true,\n    message: 'TeamCity-Struktur wurde gespeichert.',\n    filePath: prepared.filePath,\n    totalProjects: prepared.totalProjects,\n    totalBuildTypes: prepared.totalBuildTypes,\n    overviewText: prepared.overviewText\n  }\n}];"
+        },
+        "id": "112e8bfc-972e-402d-afad-1b7221c854fc",
+        "name": "Final Output",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2992,
+          320
+        ]
+      }
+    ],
+    "connections": {
+      "When Executed by Another Workflow": {
+        "main": [
+          [
+            {
+              "node": "Config",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Config": {
+        "main": [
+          [
+            {
+              "node": "TeamCity BuildTypes API",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "TeamCity BuildTypes API": {
+        "main": [
+          [
+            {
+              "node": "Create Structure Snapshot",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Create Structure Snapshot": {
+        "main": [
+          [
+            {
+              "node": "Prepare Structure File",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare Structure File": {
+        "main": [
+          [
+            {
+              "node": "Write Structure File",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Write Structure File": {
+        "main": [
+          [
+            {
+              "node": "Final Output",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "binaryMode": "separate",
+      "availableInMCP": false
+    },
+    "staticData": null,
+    "meta": null,
+    "nodeGroups": [],
+    "pinData": {},
+    "versionId": "da08698a-0083-4cc8-ac23-ff349f43be26",
+    "activeVersionId": "cfb126f8-d471-49d0-886b-b741eb259343",
+    "versionCounter": 9,
+    "triggerCount": 0,
+    "sourceWorkflowId": null,
+    "tags": [
+      {
+        "updatedAt": "2026-06-25T07:00:37.195Z",
+        "createdAt": "2026-06-25T07:00:37.195Z",
+        "id": "FayBN1pexKl90DVB",
+        "name": "TeamCity-AI"
+      }
+    ],
+    "shared": [
+      {
+        "updatedAt": "2026-06-25T16:00:34.057Z",
+        "createdAt": "2026-06-25T16:00:34.057Z",
+        "role": "workflow:owner",
+        "workflowId": "EW1BbcUZQjh6keYv",
+        "projectId": "3nuxCpe6E1rTbVSO",
+        "project": {
+          "updatedAt": "2026-06-23T19:11:12.657Z",
+          "createdAt": "2026-06-23T19:10:24.581Z",
+          "id": "3nuxCpe6E1rTbVSO",
+          "name": "testuser testuser <test@test.local>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "customTelemetryTags": [],
+          "creatorId": "71a695d0-c099-4891-be3a-2e77a978d613"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": null,
+      "description": null
+    }
+  },
+  {
+    "updatedAt": "2026-06-25T17:33:33.942Z",
+    "createdAt": "2026-06-25T16:35:56.422Z",
+    "id": "4hAwE6NnGtO89Q8K",
+    "name": "Get_Failed_Tests_By_BuildType",
+    "description": null,
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "inputSource": "passthrough"
+        },
+        "id": "466400e0-3af2-447b-ac7a-a429f98b9b31",
+        "name": "When Executed by Another Workflow",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          3312,
+          896
+        ]
+      },
+      {
+        "parameters": {},
+        "id": "7466d5a9-f1ed-400d-b562-57ea5576b8f6",
+        "name": "Manual Trigger",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          3312,
+          1104
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = $json || {};\n\nconst rawInput = input.input ?? input.query ?? input.text ?? null;\nlet parsedInput = null;\n\nif (rawInput && typeof rawInput === 'object') {\n  parsedInput = rawInput;\n} else if (typeof rawInput === 'string') {\n  const trimmed = rawInput.trim();\n  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {\n    try {\n      parsedInput = JSON.parse(trimmed);\n    } catch (_) {}\n  }\n}\n\nconst buildTypeId = String(\n  input.buildTypeId ??\n  input.build_type_id ??\n  input.buildType ??\n  input.btId ??\n  parsedInput?.buildTypeId ??\n  parsedInput?.build_type_id ??\n  parsedInput?.buildType ??\n  parsedInput?.btId ??\n  (typeof rawInput === 'string' ? rawInput : '') ??\n  ''\n).trim();\n\nif (!buildTypeId) {\n  throw new Error('Pflichtfeld fehlt: buildTypeId. Beispiel-Input: { \"buildTypeId\": \"demo_alpha_api\", \"maxTests\": 25 }');\n}\nif (!$env.TEAMCITY_BASE_URL_N8N) throw new Error('Missing env TEAMCITY_BASE_URL_N8N');\nif (!$env.TEAMCITY_TOKEN) throw new Error('Missing env TEAMCITY_TOKEN');\n\nconst maxTestsRaw = Number(\n  input.maxTests ??\n  input.max_tests ??\n  parsedInput?.maxTests ??\n  parsedInput?.max_tests ??\n  25\n);\nconst maxTests = Number.isFinite(maxTestsRaw) && maxTestsRaw > 0 ? Math.min(Math.floor(maxTestsRaw), 200) : 25;\n\nreturn [{\n  json: {\n    teamcity: {\n      baseUrl: $env.TEAMCITY_BASE_URL_N8N,\n      token: $env.TEAMCITY_TOKEN\n    },\n    request: {\n      buildTypeId,\n      maxTests,\n      source: 'executeWorkflowTrigger'\n    },\n    generatedAt: new Date().toISOString()\n  }\n}];"
+        },
+        "id": "c57946ea-abd2-4770-b226-69b794e14adb",
+        "name": "Build Query Context (Execute)",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          3600,
+          896
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = $json || {};\n\nconst providedBuildTypeId = String(\n  input.buildTypeId ??\n  input.build_type_id ??\n  input.buildType ??\n  input.btId ??\n  ''\n).trim();\n\nconst defaultBuildTypeId = String($env.TEAMCITY_DEFAULT_FAILED_BUILD_TYPE_ID ?? '').trim();\nconst buildTypeId = providedBuildTypeId || defaultBuildTypeId;\n\nif (!buildTypeId) {\n  throw new Error('Missing buildTypeId. Set TEAMCITY_DEFAULT_FAILED_BUILD_TYPE_ID in .env or pass buildTypeId manually.');\n}\nif (!$env.TEAMCITY_BASE_URL_N8N) throw new Error('Missing env TEAMCITY_BASE_URL_N8N');\nif (!$env.TEAMCITY_TOKEN) throw new Error('Missing env TEAMCITY_TOKEN');\n\nconst maxTestsRaw = Number(input.maxTests ?? input.max_tests ?? 25);\nconst maxTests = Number.isFinite(maxTestsRaw) && maxTestsRaw > 0 ? Math.min(Math.floor(maxTestsRaw), 200) : 25;\n\nreturn [{\n  json: {\n    teamcity: {\n      baseUrl: $env.TEAMCITY_BASE_URL_N8N,\n      token: $env.TEAMCITY_TOKEN\n    },\n    request: {\n      buildTypeId,\n      maxTests,\n      source: 'manualTrigger'\n    },\n    generatedAt: new Date().toISOString()\n  }\n}];"
+        },
+        "id": "56734628-9417-42e6-9616-e03c14bd7b29",
+        "name": "Build Query Context (Manual)",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          3600,
+          1104
+        ]
+      },
+      {
+        "parameters": {
+          "url": "={{ $json.teamcity.baseUrl + '/app/rest/builds' }}",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "locator",
+                "value": "={{ 'buildType:(id:' + $json.request.buildTypeId + '),status:FAILURE,state:finished,count:1' }}"
+              },
+              {
+                "name": "fields",
+                "value": "build(id,number,status,state,startDate,finishDate,webUrl,buildType(id,name,projectName,projectId))"
+              }
+            ]
+          },
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $json.teamcity.token }}"
+              },
+              {
+                "name": "Accept",
+                "value": "application/json"
+              }
+            ]
+          },
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            }
+          }
+        },
+        "id": "87ad7232-1e92-485f-a6b7-2afe4763280a",
+        "name": "Find Latest Failed Build",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4,
+        "position": [
+          3872,
+          1008
+        ],
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 2000,
+        "continueOnFail": true
+      },
+      {
+        "parameters": {
+          "jsCode": "let ctx = {};\n\ntry {\n  ctx = $items('Build Query Context (Execute)')[0]?.json || {};\n} catch (_) {}\n\nif (!ctx || !Object.keys(ctx).length) {\n  try {\n    ctx = $items('Build Query Context (Manual)')[0]?.json || {};\n  } catch (_) {}\n}\n\nconst src = $json?.body && typeof $json.body === 'object' ? $json.body : ($json || {});\nconst builds = Array.isArray(src.build) ? src.build : [];\nconst failedBuild = builds[0] || null;\n\nreturn [{\n  json: {\n    ...ctx,\n    build: failedBuild\n  }\n}];"
+        },
+        "id": "bf6c6d85-3065-4777-8ee9-d89a2b2d2601",
+        "name": "Attach Build Details",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          4144,
+          1008
+        ]
+      },
+      {
+        "parameters": {
+          "url": "={{ $json.teamcity.baseUrl + '/app/rest/testOccurrences' }}",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "locator",
+                "value": "={{ $json.build?.id ? ('build:(id:' + $json.build.id + '),status:FAILURE,count:' + $json.request.maxTests) : 'build:(id:0),status:FAILURE,count:0' }}"
+              },
+              {
+                "name": "fields",
+                "value": "testOccurrence(id,name,status,duration,details,build(id,number,webUrl),runOrder)"
+              }
+            ]
+          },
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $json.teamcity.token }}"
+              },
+              {
+                "name": "Accept",
+                "value": "application/json"
+              }
+            ]
+          },
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            }
+          }
+        },
+        "id": "898d37aa-600d-4fc6-83dd-747bf9c37cb4",
+        "name": "Fetch Failed Tests",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4,
+        "position": [
+          4400,
+          1008
+        ],
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 2000,
+        "continueOnFail": true
+      },
+      {
+        "parameters": {
+          "jsCode": "const ctx = $items('Attach Build Details')[0]?.json || {};\nconst src = $json?.body && typeof $json.body === 'object' ? $json.body : ($json || {});\nconst testOccurrences = Array.isArray(src.testOccurrence) ? src.testOccurrence : [];\n\nconst failedTests = testOccurrences.map((t) => ({\n  name: t.name || null,\n  status: t.status || null,\n  duration: t.duration || null,\n  details: t.details || null,\n  runOrder: t.runOrder || null\n}));\n\nconst snapshot = {\n  snapshotType: 'teamcity_failed_tests',\n  createdAt: new Date().toISOString(),\n  requestSource: ctx.request?.source || null,\n  buildTypeId: ctx.request?.buildTypeId || null,\n  buildId: ctx.build?.id || null,\n  maxTestsRequested: ctx.request?.maxTests || null,\n  teamcityBaseUrl: ctx.teamcity?.baseUrl || null,\n  build: ctx.build || null,\n  totalFailedTests: failedTests.length,\n  failedTests,\n  message: ctx.build\n    ? (failedTests.length ? 'Fehlgeschlagene Tests wurden gefunden.' : 'Build gefunden, aber keine fehlgeschlagenen Tests im Resultat.')\n    : 'Kein fehlgeschlagener Build fuer diese BuildType-ID gefunden.'\n};\n\nreturn [{ json: snapshot }];"
+        },
+        "id": "a6b3accb-8013-45fb-8d0d-6f140c7eddae",
+        "name": "Build Failed Tests Snapshot",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          4656,
+          1008
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const snapshot = $json;\nif (!$env.TEAMCITY_AI_FAILED_TESTS_PATH) throw new Error('Missing env TEAMCITY_AI_FAILED_TESTS_PATH');\n\nconst buildTypeIdForFile = String(snapshot.buildTypeId || 'unknown-buildType').trim();\nconst hasBuildId = !!snapshot.buildId;\nconst buildIdForFile = hasBuildId ? String(snapshot.buildId) : '';\n\nlet filePath = $env.TEAMCITY_AI_FAILED_TESTS_PATH;\nfilePath = filePath.replace('{buildTypeId}', buildTypeIdForFile);\nfilePath = filePath.replace('{buildId}', buildIdForFile);\n\nconst fileName = hasBuildId\n  ? `failed-tests-${buildTypeIdForFile}-build-${buildIdForFile}.json`\n  : `failed-tests-${buildTypeIdForFile}.json`;\n\nconst jsonText = JSON.stringify(snapshot, null, 2);\n\nreturn [{\n  json: {\n    ...snapshot,\n    filePath\n  },\n  binary: {\n    data: {\n      data: Buffer.from(jsonText, 'utf8').toString('base64'),\n      mimeType: 'application/json',\n      fileName\n    }\n  }\n}];"
+        },
+        "id": "5236a7df-6bc3-4694-a142-0081683d35e5",
+        "name": "Prepare Failed Tests File",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          4912,
+          1008
+        ]
+      },
+      {
+        "parameters": {
+          "fileName": "={{ $json.filePath }}",
+          "options": {}
+        },
+        "id": "df44e706-b2a6-4e65-a492-9f9f8aaf340a",
+        "name": "Write Failed Tests File",
+        "type": "n8n-nodes-base.writeBinaryFile",
+        "typeVersion": 1,
+        "position": [
+          5184,
+          1008
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const prepared = $items('Prepare Failed Tests File')[0]?.json || {};\n\nreturn [{\n  json: {\n    ok: true,\n    message: prepared.message || null,\n    buildTypeId: prepared.buildTypeId || null,\n    buildId: prepared.buildId || null,\n    build: prepared.build || null,\n    totalFailedTests: prepared.totalFailedTests || 0,\n    failedTests: prepared.failedTests || [],\n    filePath: prepared.filePath || null\n  }\n}];"
+        },
+        "id": "af1c6197-370f-4570-9b9e-5bdebe408548",
+        "name": "Final Output",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          5440,
+          1008
+        ]
+      }
+    ],
+    "connections": {
+      "When Executed by Another Workflow": {
+        "main": [
+          [
+            {
+              "node": "Build Query Context (Execute)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Manual Trigger": {
+        "main": [
+          [
+            {
+              "node": "Build Query Context (Manual)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Query Context (Execute)": {
+        "main": [
+          [
+            {
+              "node": "Find Latest Failed Build",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Query Context (Manual)": {
+        "main": [
+          [
+            {
+              "node": "Find Latest Failed Build",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Find Latest Failed Build": {
+        "main": [
+          [
+            {
+              "node": "Attach Build Details",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Attach Build Details": {
+        "main": [
+          [
+            {
+              "node": "Fetch Failed Tests",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Failed Tests": {
+        "main": [
+          [
+            {
+              "node": "Build Failed Tests Snapshot",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Failed Tests Snapshot": {
+        "main": [
+          [
+            {
+              "node": "Prepare Failed Tests File",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare Failed Tests File": {
+        "main": [
+          [
+            {
+              "node": "Write Failed Tests File",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Write Failed Tests File": {
+        "main": [
+          [
+            {
+              "node": "Final Output",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "binaryMode": "separate",
+      "availableInMCP": false
+    },
+    "staticData": null,
+    "meta": null,
+    "nodeGroups": [],
+    "pinData": {},
+    "versionId": "154eae62-82a1-4bc0-821c-9315b18cd6b4",
+    "activeVersionId": "340bfdd4-1931-46d7-ba37-cacc9414a88f",
+    "versionCounter": 21,
+    "triggerCount": 0,
+    "sourceWorkflowId": null,
+    "tags": [
+      {
+        "updatedAt": "2026-06-25T07:00:37.195Z",
+        "createdAt": "2026-06-25T07:00:37.195Z",
+        "id": "FayBN1pexKl90DVB",
+        "name": "TeamCity-AI"
+      }
+    ],
+    "shared": [
+      {
+        "updatedAt": "2026-06-25T16:35:56.424Z",
+        "createdAt": "2026-06-25T16:35:56.424Z",
+        "role": "workflow:owner",
+        "workflowId": "4hAwE6NnGtO89Q8K",
+        "projectId": "3nuxCpe6E1rTbVSO",
+        "project": {
+          "updatedAt": "2026-06-23T19:11:12.657Z",
+          "createdAt": "2026-06-23T19:10:24.581Z",
+          "id": "3nuxCpe6E1rTbVSO",
+          "name": "testuser testuser <test@test.local>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "customTelemetryTags": [],
+          "creatorId": "71a695d0-c099-4891-be3a-2e77a978d613"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": null,
+      "description": null
+    }
+  }
+]

@@ -1,6 +1,6 @@
 {
   "snapshotType": "teamcity_failed_tests",
-  "createdAt": "2026-06-25T17:15:48.994Z",
+  "createdAt": "2026-06-25T18:32:48.330Z",
   "requestSource": "manualTrigger",
   "buildTypeId": "demo_alpha_api",
   "buildId": null,

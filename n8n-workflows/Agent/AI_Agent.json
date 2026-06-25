@@ -22,8 +22,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
       "typeVersion": 1,
       "position": [
-        -144,
-        576
+        -176,
+        592
       ],
       "id": "25fe807d-3a66-487e-b352-40d52fd02d48",
       "name": "Ollama Chat Model",
@@ -37,7 +37,7 @@
     {
       "parameters": {
         "options": {
-          "systemMessage": "You are a helpful assistant for TeamCity. If the user asks for project structure, project overview, build configurations, folders, modules, or similar (German or English), always call the workflow tool first and then answer with a concise summary."
+          "systemMessage": "You are a helpful assistant for TeamCity. If the user asks for project structure, project overview, build configurations, folders, modules, or similar (German or English), always call the workflow tool first and then answer with a concise summary. If the user asks for failed tests of a specific build type, call the failed-tests workflow tool with strict tool arguments. The arguments must be valid JSON with exactly one field: {\"input\":\"<buildTypeId>\"}. Never add any other field. Never send maxTests. Never send trailing text, markdown, or code fences in tool arguments. If buildTypeId is missing or ambiguous, ask a short clarification question first."
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -162,17 +162,6 @@
       ]
     },
     {
-      "parameters": {},
-      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
-      "typeVersion": 1.4,
-      "position": [
-        32,
-        576
-      ],
-      "id": "c9f153aa-0f53-4c1e-822e-dab7e15bd42f",
-      "name": "Simple Memory"
-    },
-    {
       "parameters": {
         "description": "Use this tool whenever the user asks about the TeamCity project structure, projects, build configurations, folders or modules.\nThis tool retrieves the latest project structure from TeamCity and returns it. No Input data necessary!",
         "workflowId": {
@@ -194,11 +183,52 @@
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 2.2,
       "position": [
-        224,
-        560
+        192,
+        576
       ],
       "id": "827c6242-ca55-4a53-ae2a-71e9d97dda31",
       "name": "Call 'Get_Project_Structure'"
+    },
+    {
+      "parameters": {
+        "description": "Use this tool whenever the user asks for failed tests for a specific TeamCity build type.\n\nInput contract:\n- input: required plain string containing only the buildTypeId (example: demo_alpha_api)\n\nSTRICT ARGUMENT FORMAT:\n- Tool arguments must be exactly: {\"input\":\"demo_alpha_api\"}\n- Do not include maxTests.\n- Do not include additional keys.\n- Do not include markdown or explanatory text in arguments.",
+        "workflowId": {
+          "__rl": true,
+          "value": "Get_Failed_Tests_By_BuildType",
+          "mode": "name"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "input": "{{ $fromAI('input', 'TeamCity buildTypeId as plain string, e.g. demo_alpha_api') }}"
+          },
+          "matchingColumns": [
+            "input"
+          ],
+          "schema": [
+            {
+              "id": "input",
+              "displayName": "input",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        576,
+        576
+      ],
+      "id": "62a42635-12f4-4f7b-9e17-d3f4e54b6b2a",
+      "name": "Call 'Get_Failed_Tests_By_BuildType'"
     },
     {
       "parameters": {
@@ -209,11 +239,22 @@
       "type": "n8n-nodes-base.httpRequestTool",
       "typeVersion": 4.4,
       "position": [
-        416,
-        560
+        384,
+        576
       ],
       "id": "6bc59b01-5db3-4095-bc44-d41d4d6cf6f4",
       "name": "HTTP Request"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        592
+      ],
+      "id": "03515fc1-4a05-42dc-9332-eea79f005d38",
+      "name": "Simple Memory"
     }
   ],
   "pinData": {},
@@ -284,18 +325,18 @@
         ]
       ]
     },
-    "Simple Memory": {
-      "ai_memory": [
+    "Call 'Get_Project_Structure'": {
+      "ai_tool": [
         [
           {
             "node": "AI Agent",
-            "type": "ai_memory",
+            "type": "ai_tool",
             "index": 0
           }
         ]
       ]
     },
-    "Call 'Get_Project_Structure'": {
+    "Call 'Get_Failed_Tests_By_BuildType'": {
       "ai_tool": [
         [
           {
@@ -316,6 +357,17 @@
           }
         ]
       ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -324,7 +376,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "cf3e8f9b-443e-444a-ace5-c25f53a3d96b",
+  "versionId": "8ddc8582-e630-4e82-9ec2-6e68630963ae",
   "meta": {
     "instanceId": "e49844d4d683cac13f54084fa5356b54658c12021c031a45c13b3f26e54bf57a"
   },
