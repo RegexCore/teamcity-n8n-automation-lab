@@ -76,21 +76,9 @@
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
-          "value": {
-            "input": "=project_structure"
-          },
+          "value": {},
           "matchingColumns": [],
-          "schema": [
-            {
-              "id": "input",
-              "displayName": "input",
-              "required": true,
-              "defaultMatch": false,
-              "display": true,
-              "canBeUsedToMatch": true,
-              "type": "string"
-            }
-          ],
+          "schema": [],
           "attemptToConvertTypes": false,
           "convertFieldsToString": false
         }
@@ -311,7 +299,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "c839ffbd-5835-4131-97f3-c36e82e78b9a",
+  "versionId": "02a80afe-8bf6-42a3-8de0-c30bc1008716",
   "meta": {
     "instanceId": "e49844d4d683cac13f54084fa5356b54658c12021c031a45c13b3f26e54bf57a"
   },
