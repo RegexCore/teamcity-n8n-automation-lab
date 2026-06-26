@@ -29,7 +29,7 @@ Local Docker Compose lab for TeamCity (REST + MCP test flows), n8n (UI + chat/we
   - [2.5 Persistence](#25-persistence)
   - [2.6 Commands](#26-commands)
   - [2.7 Troubleshooting](#27-troubleshooting)
-  - [2.8 Planned Implementation: Custom Chat via Webhook API](#28-planned-implementation-custom-chat-via-webhook-api)
+  - [2.8 Custom Chat via Webhook API (Implemented)](#28-custom-chat-via-webhook-api-implemented)
 - [3. Ollama](#3-ollama)
   - [3.1 Scope](#31-scope)
   - [3.2 Architecture](#32-architecture)
@@ -523,84 +523,161 @@ Expected:
 - HTTP 200: token valid
 - HTTP 401: token invalid/revoked/expired/insufficient rights
 
-## 2.8 Planned Implementation: Custom Chat via Webhook API
+## 2.8 Custom Chat via Webhook API (Implemented)
 
-Note: this section documents planned architecture only.
+Implemented in workflow:
 
-Target:
+- `n8n-workflows/Agent/AI_Agent.json`
 
-- use a custom chat client (web/app/service) calling n8n via HTTP API
-- n8n processes request, calls Ollama, returns defined JSON response
+Behavior:
+
+- Chat Trigger and API Webhook run in parallel and use the same AI Agent flow.
+- Chat UI usage continues unchanged.
+- Webhook calls receive an HTTP JSON response from `Respond to Webhook`.
 
 ### 2.8.1 Endpoint and Port Mapping
 
+Configured webhook path in the AI Agent workflow:
+
+- `teamcity-ai-agent`
+
 With `N8N_HTTP_PORT=5678` locally:
 
-- test endpoint (editor/execute context):
-  - `http://localhost:5678/webhook-test/<chat-path>`
+- test endpoint (while testing in editor):
+  - `http://localhost:5678/webhook-test/teamcity-ai-agent`
 - production endpoint (active workflow):
-  - `http://localhost:5678/webhook/<chat-path>`
+  - `http://localhost:5678/webhook/teamcity-ai-agent`
 
-Path mapping:
+From another container in the same Compose network:
 
-- `<chat-path>` is set in n8n Webhook node, e.g. `my-chat`
-- examples:
-  - `http://localhost:5678/webhook-test/my-chat`
-  - `http://localhost:5678/webhook/my-chat`
+- `http://n8n:5678/webhook/teamcity-ai-agent`
 
-From another container in same Compose network:
+### 2.8.2 Request/Response Contract
 
-- `http://n8n:5678/webhook/<chat-path>`
+Accepted request fields:
 
-### 2.8.1.1 Where do webhook, webhook-test, and chat-path come from?
+- `message` (recommended)
+- alternatively: `input`, `chatInput`, or `text`
+- optional: `conversationId` or `sessionId`
 
-- `webhook` and `webhook-test` are n8n default base routes
-- base routes come from n8n server configuration, not from `docker-compose.yml`
-- `chat-path` is set in Webhook node `Path`
-
-Defaults are configurable via:
-
-- `N8N_ENDPOINT_WEBHOOK`
-- `N8N_ENDPOINT_WEBHOOK_TEST`
-
-### 2.8.2 Planned Request/Response Contract
-
-Planned request:
+Example request:
 
 ```json
 {
-  "message": "What is 4 + 1?",
-  "conversationId": "conv-001",
-  "userId": "user-001"
+  "message": "Zeig mir die fehlgeschlagenen Tests fuer demo_alpha_api",
+  "conversationId": "conv-001"
 }
 ```
 
-Planned response:
+Example response:
 
 ```json
 {
-  "answer": "4 + 1 equals 5.",
-  "model": "qwen3:8b",
-  "conversationId": "conv-001",
-  "meta": {
-    "done": true,
-    "total_duration": 123456789
-  }
+  "output": "...",
+  "text": "..."
 }
 ```
 
-### 2.8.3 Planned Workflow Flow
+### 2.8.3 Test Commands (Terminal)
 
-1. Webhook trigger receives JSON request.
-2. Code/Set node validates `message` and normalizes fields.
-3. HTTP Request node calls `http://ollama:11434/api/generate`.
-4. Code node maps output to API response schema.
-5. Respond to Webhook node returns JSON to client.
+Both URLs at a glance:
 
-### 2.8.4 Planned Operating Rules
+- test URL: `http://localhost:5678/webhook-test/teamcity-ai-agent`
+- production URL: `http://localhost:5678/webhook/teamcity-ai-agent`
 
-- use `webhook-test` for testing, `webhook` for production
-- use active workflows only in production
+Activation rule:
+
+- test URL requires `Execute workflow` in n8n editor before calling.
+- production URL requires workflow to be published/active.
+
+PowerShell (test URL):
+
+```powershell
+Invoke-RestMethod -Method Post -Uri "http://localhost:5678/webhook-test/teamcity-ai-agent" -ContentType "application/json" -Body '{"message":"Zeig mir die fehlgeschlagenen Tests fuer demo_alpha_api"}'
+```
+
+PowerShell (production URL):
+
+```powershell
+Invoke-RestMethod -Method Post -Uri "http://localhost:5678/webhook/teamcity-ai-agent" -ContentType "application/json" -Body '{"message":"Zeig mir die fehlgeschlagenen Tests fuer demo_alpha_api"}'
+```
+
+curl (test URL):
+
+```bash
+curl -X POST "http://localhost:5678/webhook-test/teamcity-ai-agent" \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Zeig mir die fehlgeschlagenen Tests fuer demo_alpha_api"}'
+```
+
+curl (production URL):
+
+```bash
+curl -X POST "http://localhost:5678/webhook/teamcity-ai-agent" \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Zeig mir die fehlgeschlagenen Tests fuer demo_alpha_api"}'
+```
+
+### 2.8.3.1 PowerShell Output Truncation and Full Response
+
+Behavior:
+
+- PowerShell table view can shorten long string fields with `...`.
+- n8n returns the full response; only terminal rendering is shortened.
+
+Show only full `output` text:
+
+PowerShell (test URL):
+
+```powershell
+(Invoke-RestMethod -Method Post -Uri "http://localhost:5678/webhook-test/teamcity-ai-agent" -ContentType "application/json" -Body '{"message":"Zeig mir die fehlgeschlagenen Tests fuer demo_alpha_api"}').output
+```
+
+PowerShell (production URL):
+
+```powershell
+(Invoke-RestMethod -Method Post -Uri "http://localhost:5678/webhook/teamcity-ai-agent" -ContentType "application/json" -Body '{"message":"Zeig mir die fehlgeschlagenen Tests fuer demo_alpha_api"}').output
+```
+
+Store response in variable and print full fields:
+
+```powershell
+$r = Invoke-RestMethod -Method Post -Uri "http://localhost:5678/webhook/teamcity-ai-agent" -ContentType "application/json" -Body '{"message":"Zeig mir die fehlgeschlagenen Tests fuer demo_alpha_api"}'
+$r.output
+$r.text
+```
+
+Print complete JSON in terminal:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri "http://localhost:5678/webhook/teamcity-ai-agent" -ContentType "application/json" -Body '{"message":"Zeig mir die fehlgeschlagenen Tests fuer demo_alpha_api"}' | ConvertTo-Json -Depth 10
+```
+
+Write full output to file:
+
+```powershell
+$r = Invoke-RestMethod -Method Post -Uri "http://localhost:5678/webhook/teamcity-ai-agent" -ContentType "application/json" -Body '{"message":"Zeig mir die fehlgeschlagenen Tests fuer demo_alpha_api"}'
+$r.output | Out-File -FilePath "$env:TEMP\n8n-webhook-response.txt" -Encoding utf8
+notepad "$env:TEMP\n8n-webhook-response.txt"
+```
+
+### 2.8.4 Activation Behavior (Important)
+
+- `webhook-test` works only after clicking `Execute workflow` in the n8n editor and usually for one test call.
+- `webhook` works only when the workflow is published/active.
+- if webhook was newly added/changed and still returns 404, publish/activate the workflow and restart n8n.
+
+Useful command to publish the AI agent workflow:
+
+```powershell
+docker compose exec n8n n8n publish:workflow --id=gfMLTXA2ZfUhJCqJ
+docker compose restart n8n
+```
+
+### 2.8.5 Operating Rules
+
+- use `webhook-test` for draft/testing runs
+- use `webhook` with active workflow for real client integrations
 - secure webhook endpoint (token/JWT/reverse proxy), do not expose openly
 - keep `N8N_WEBHOOK_URL` aligned with externally reachable URL
 

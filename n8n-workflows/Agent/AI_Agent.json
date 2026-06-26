@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "jsCode": "const src = $input.first()?.json ?? {};\nlet output = src.output ?? src.text ?? src.response ?? src.answer ?? '';\n\nif (typeof output !== 'string') {\n  try {\n    output = JSON.stringify(output, null, 2);\n  } catch (_) {\n    output = String(output);\n  }\n}\n\nreturn [{\n  json: {\n    output: output,\n    text: output\n  }\n}];"
+        "jsCode": "const src = $input.first()?.json ?? {};\nlet output = src.output ?? src.text ?? src.response ?? src.answer ?? '';\n\nif (typeof output !== 'string') {\n  try {\n    output = JSON.stringify(output, null, 2);\n  } catch (_) {\n    output = String(output);\n  }\n}\n\nlet fromWebhook = false;\ntry {\n  const webhookItems = $items('Webhook Trigger');\n  fromWebhook = Array.isArray(webhookItems) && webhookItems.length > 0;\n} catch (_) {\n  fromWebhook = false;\n}\n\nreturn [{\n  json: {\n    output: output,\n    text: output,\n    fromWebhook: fromWebhook\n  }\n}];"
       },
       "id": "d54b18ee-eded-4811-8702-4655f327564c",
       "name": "Select Output1",
@@ -63,6 +63,84 @@
         2416
       ],
       "webhookId": "ae71b698-e88d-47f3-b540-c4273783bf02"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "teamcity-ai-agent",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "14f5d65a-0b78-4e0c-b15a-34e8bf1d17da",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        14896,
+        2240
+      ],
+      "webhookId": "teamcity-ai-agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "const src = $input.first()?.json ?? {};\nconst body = src.body && typeof src.body === 'object' ? src.body : src;\nconst chatInput = (body.message ?? body.input ?? body.chatInput ?? body.text ?? '').toString().trim();\n\nif (!chatInput) {\n  throw new Error('Webhook payload requires one of: message, input, chatInput, text');\n}\n\nconst providedSessionId = (body.conversationId ?? body.sessionId ?? body.userId ?? '').toString().trim();\nconst sessionId = providedSessionId || `webhook-${Date.now()}`;\n\nreturn [{\n  json: {\n    chatInput,\n    sessionId,\n    webhookPayload: body\n  }\n}];"
+      },
+      "id": "3f0b3584-ea73-48c8-812e-a2456f7b52dc",
+      "name": "Normalize Webhook Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        15056,
+        2240
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.fromWebhook }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "18e0f164-97ec-40de-a7c7-ff82fac551a0",
+      "name": "Is Webhook Request",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        15824,
+        2368
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { output: $json.output, text: $json.text } }}",
+        "options": {}
+      },
+      "id": "313f9f1e-ae9c-44cf-95ef-894bb7f89b0d",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        16032,
+        2256
+      ]
     },
     {
       "parameters": {
@@ -235,6 +313,51 @@
             "index": 0
           }
         ]
+      ]
+    },
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Webhook Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Webhook Input": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Output1": {
+      "main": [
+        [
+          {
+            "node": "Is Webhook Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Webhook Request": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
       ]
     },
     "Call 'Get_Project_Structure'": {
