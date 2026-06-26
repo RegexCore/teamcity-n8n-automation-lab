@@ -1,17 +1,17 @@
-﻿{
+{
   "name": "AI_Agent",
   "nodes": [
     {
       "parameters": {
         "jsCode": "const src = $input.first()?.json ?? {};\nlet output = src.output ?? src.text ?? src.response ?? src.answer ?? '';\n\nif (typeof output !== 'string') {\n  try {\n    output = JSON.stringify(output, null, 2);\n  } catch (_) {\n    output = String(output);\n  }\n}\n\nreturn [{\n  json: {\n    output: output,\n    text: output\n  }\n}];"
       },
-      "id": "791f6f64-f5c0-4802-9fdb-9bdd397815b9",
+      "id": "d54b18ee-eded-4811-8702-4655f327564c",
       "name": "Select Output1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        416,
-        352
+        15648,
+        2368
       ]
     },
     {
@@ -22,10 +22,10 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
       "typeVersion": 1,
       "position": [
-        -176,
-        592
+        15056,
+        2608
       ],
-      "id": "25fe807d-3a66-487e-b352-40d52fd02d48",
+      "id": "fcb6351e-4c7d-4330-824e-d89009118dee",
       "name": "Ollama Chat Model",
       "credentials": {
         "ollamaApi": {
@@ -43,123 +43,26 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        -16,
-        352
+        15216,
+        2368
       ],
-      "id": "28efd5a2-ebbf-450b-b584-26226291effe",
+      "id": "2d6e531b-3759-49f3-a01e-57ea43e9128e",
       "name": "AI Agent",
       "alwaysOutputData": false
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\n\nlet requestItems = [];\ntry {\n  requestItems = $items('Build Manual Request');\n} catch (_) {}\n\nif (!requestItems.length) {\n  try {\n    requestItems = $items('Build Chat Request');\n  } catch (_) {}\n}\n\nreturn items.map((item, index) => {\n  const src = item.json || {};\n  const body = src.body && typeof src.body === 'object' ? src.body : {};\n  const payload = Object.keys(body).length ? body : src;\n  const requestJson = requestItems[index]?.json ?? {};\n  const responseText = String(payload.response ?? '');\n\n  return {\n    json: {\n      mode: requestJson.mode ?? null,\n      input_question: requestJson.input_question ?? null,\n      llm_request: requestJson.llm_request ?? null,\n      llm_response: responseText,\n      text: responseText,\n      output: responseText,\n      model: payload.model ?? requestJson.llm_request?.model ?? null,\n      done: payload.done ?? null,\n      total_duration: payload.total_duration ?? null\n    }\n  };\n});"
-      },
-      "id": "efc4e9f6-f21c-4c24-96e4-19ab10eaf89d",
-      "name": "Select Output",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        592,
-        80
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "http://ollama:11434/api/generate",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "model",
-              "value": "={{ $json.llm_request.model }}"
-            },
-            {
-              "name": "prompt",
-              "value": "={{ $json.llm_request.prompt }}"
-            },
-            {
-              "name": "system",
-              "value": "={{ $json.llm_request.system_prompt }}"
-            },
-            {
-              "name": "stream",
-              "value": "={{ $json.llm_request.stream }}"
-            },
-            {
-              "name": "options",
-              "value": "={{ $json.llm_request.options }}"
-            }
-          ]
-        },
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "json"
-            }
-          }
-        }
-      },
-      "id": "7734c122-0653-4ca9-966d-496e8d7dc684",
-      "name": "Call Ollama",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [
-        304,
-        80
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
-    },
-    {
-      "parameters": {
-        "jsCode": "const systemPrompt = 'Answer in English and explain your answer clearly.';\nconst question = ($json.chatInput || '').toString().trim();\n\nreturn [\n  {\n    json: {\n      mode: 'chat-input',\n      input_question: question,\n      llm_request: {\n        endpoint: 'http://ollama:11434/api/generate',\n        model: 'qwen3:8b',\n        stream: false,\n        options: {\n          temperature: 0.1,\n          top_p: 0.9,\n          num_predict: 180\n        },\n        system_prompt: systemPrompt,\n        prompt: question\n      }\n    }\n  }\n];"
-      },
-      "id": "d6060a7c-7491-4361-b271-8244117a642d",
-      "name": "Build Chat Request",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        0,
-        176
-      ]
-    },
-    {
-      "parameters": {
         "options": {}
       },
-      "id": "b15b8b99-48ec-4eae-a307-e764c6173698",
+      "id": "1c638502-f6d0-4483-beb3-e85732fce0ec",
       "name": "Chat Trigger",
       "type": "@n8n/n8n-nodes-langchain.chatTrigger",
       "typeVersion": 1.1,
       "position": [
-        -336,
-        400
+        14896,
+        2416
       ],
       "webhookId": "ae71b698-e88d-47f3-b540-c4273783bf02"
-    },
-    {
-      "parameters": {
-        "jsCode": "const systemPrompt = 'Answer in English and explain your answer clearly.';\nconst prompt = 'What is 4 + 1?';\n\nreturn [\n  {\n    json: {\n      mode: 'manual-fixed',\n      input_question: prompt,\n      llm_request: {\n        endpoint: 'http://ollama:11434/api/generate',\n        model: 'qwen3:8b',\n        stream: false,\n        options: {\n          temperature: 0.1,\n          top_p: 0.9,\n          num_predict: 180\n        },\n        system_prompt: systemPrompt,\n        prompt\n      }\n    }\n  }\n];"
-      },
-      "id": "2e53872d-a3c7-4a52-98e1-ed221ba87d40",
-      "name": "Build Manual Request",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        0,
-        0
-      ]
     },
     {
       "parameters": {
@@ -174,7 +77,7 @@
         "workflowInputs": {
           "mappingMode": "defineBelow",
           "value": {
-            "input": "={{ $fromAI('input', 'TeamCity buildTypeId as plain string, e.g. demo_alpha_api') }}"
+            "input": "=project_structure"
           },
           "matchingColumns": [],
           "schema": [
@@ -195,10 +98,10 @@
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 2.2,
       "position": [
-        192,
-        576
+        15424,
+        2592
       ],
-      "id": "827c6242-ca55-4a53-ae2a-71e9d97dda31",
+      "id": "29baf026-cb0a-4657-8d4a-c3083e04eaa7",
       "name": "Call 'Get_Project_Structure'"
     },
     {
@@ -210,34 +113,6 @@
           "mode": "list",
           "cachedResultUrl": "/workflow/4hAwE6NnGtO89Q8K",
           "cachedResultName": "Get_Failed_Tests_By_BuildType"
-        },
-        "workflowInputs": {
-          "mappingMode": "defineBelow",
-          "value": {},
-          "matchingColumns": [],
-          "schema": [],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": false
-        }
-      },
-      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
-      "typeVersion": 2.2,
-      "position": [
-        576,
-        576
-      ],
-      "id": "62a42635-12f4-4f7b-9e17-d3f4e54b6b2a",
-      "name": "Call 'Get_Failed_Tests_By_BuildType'"
-    },
-    {
-      "parameters": {
-        "description": "Use this tool whenever the user asks for passed tests for a specific TeamCity build type.\n\nInput contract:\n- input: required plain string containing only the buildTypeId (example: demo_alpha_api)\n\nSTRICT ARGUMENT FORMAT:\n- Tool arguments must be exactly: {\"input\":\"demo_alpha_api\"}\n- Do not include maxTests.\n- Do not include additional keys.\n- Do not include markdown or explanatory text in arguments.",
-        "workflowId": {
-          "__rl": true,
-          "value": "N8wX2g0Vf4CkL9yP",
-          "mode": "list",
-          "cachedResultUrl": "/workflow/N8wX2g0Vf4CkL9yP",
-          "cachedResultName": "Get_Passed_Tests_By_BuildType"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
@@ -263,10 +138,53 @@
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 2.2,
       "position": [
-        768,
-        576
+        15808,
+        2592
       ],
-      "id": "f44c1ec4-7f48-4c8f-8a2b-61057a0dcf43",
+      "id": "d4f25067-feb0-4cb8-af42-bb8030b223ea",
+      "name": "Call 'Get_Failed_Tests_By_BuildType'"
+    },
+    {
+      "parameters": {
+        "description": "Use this tool whenever the user asks for passed tests for a specific TeamCity build type.\n\nInput contract:\n- input: required plain string containing only the buildTypeId (example: demo_alpha_api)\n\nSTRICT ARGUMENT FORMAT:\n- Tool arguments must be exactly: {\"input\":\"demo_alpha_api\"}\n- Do not include maxTests.\n- Do not include additional keys.\n- Do not include markdown or explanatory text in arguments.",
+        "workflowId": {
+          "__rl": true,
+          "value": "cRg00cvYHSnAMnOJ",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/cRg00cvYHSnAMnOJ",
+          "cachedResultName": "Get_Passed_Tests_By_BuildType"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "input": "={{ $fromAI('input', 'TeamCity buildTypeId as plain string, e.g. demo_alpha_api') }}"
+          },
+          "matchingColumns": [
+            "input"
+          ],
+          "schema": [
+            {
+              "id": "input",
+              "displayName": "input",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        16000,
+        2592
+      ],
+      "id": "5b7668c0-087a-4b33-834b-ad7a3d8e0081",
       "name": "Call 'Get_Passed_Tests_By_BuildType'"
     },
     {
@@ -278,10 +196,10 @@
       "type": "n8n-nodes-base.httpRequestTool",
       "typeVersion": 4.4,
       "position": [
-        384,
-        576
+        15616,
+        2592
       ],
-      "id": "6bc59b01-5db3-4095-bc44-d41d4d6cf6f4",
+      "id": "ff1f7e1c-30bc-454f-b41b-2ffac00ed204",
       "name": "HTTP Request"
     },
     {
@@ -289,10 +207,10 @@
       "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
       "typeVersion": 1.4,
       "position": [
-        0,
-        592
+        15232,
+        2608
       ],
-      "id": "03515fc1-4a05-42dc-9332-eea79f005d38",
+      "id": "7da4c43d-1dde-4ea6-9127-81b640be033f",
       "name": "Simple Memory"
     }
   ],
@@ -320,44 +238,11 @@
         ]
       ]
     },
-    "Call Ollama": {
-      "main": [
-        [
-          {
-            "node": "Select Output",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Build Chat Request": {
-      "main": [
-        [
-          {
-            "node": "Call Ollama",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Chat Trigger": {
       "main": [
         [
           {
             "node": "AI Agent",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Build Manual Request": {
-      "main": [
-        [
-          {
-            "node": "Call Ollama",
             "type": "main",
             "index": 0
           }
@@ -426,7 +311,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "ff138449-58fa-4f23-be2a-4ea8c5db97cb",
+  "versionId": "c839ffbd-5835-4131-97f3-c36e82e78b9a",
   "meta": {
     "instanceId": "e49844d4d683cac13f54084fa5356b54658c12021c031a45c13b3f26e54bf57a"
   },

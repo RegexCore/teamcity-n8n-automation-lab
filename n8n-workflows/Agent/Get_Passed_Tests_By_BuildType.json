@@ -3,52 +3,58 @@
   "nodes": [
     {
       "parameters": {
-        "inputSource": "passthrough"
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "input"
+            }
+          ]
+        }
       },
-      "id": "9c3d611f-70f2-4f0c-95fd-5f1cd8b9e0ce",
+      "id": "3c1400c8-535c-48e3-8a1e-fb726beaf7db",
       "name": "When Executed by Another Workflow",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.1,
       "position": [
-        -368,
-        128
+        -976,
+        496
       ]
     },
     {
       "parameters": {},
-      "id": "23f54d59-6d86-4f5a-8bcf-a754eb39f166",
+      "id": "33a4b67c-ebed-413c-925f-91eeae3d4951",
       "name": "Manual Trigger",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        -368,
-        320
+        -976,
+        688
       ]
     },
     {
       "parameters": {
         "jsCode": "const input = $json || {};\n\nconst rawInput = input.input ?? input.query ?? input.text ?? null;\nlet parsedInput = null;\n\nif (rawInput && typeof rawInput === 'object') {\n  parsedInput = rawInput;\n} else if (typeof rawInput === 'string') {\n  const trimmed = rawInput.trim();\n  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {\n    try {\n      parsedInput = JSON.parse(trimmed);\n    } catch (_) {}\n  }\n}\n\nconst buildTypeId = String(\n  input.buildTypeId ??\n  input.build_type_id ??\n  input.buildType ??\n  input.btId ??\n  parsedInput?.buildTypeId ??\n  parsedInput?.build_type_id ??\n  parsedInput?.buildType ??\n  parsedInput?.btId ??\n  (typeof rawInput === 'string' ? rawInput : '') ??\n  ''\n).trim();\n\nif (!buildTypeId) {\n  throw new Error('Required field is missing: buildTypeId. Example input: { \\\"buildTypeId\\\": \\\"demo_alpha_api\\\", \\\"maxTests\\\": 25 }');\n}\nif (!$env.TEAMCITY_BASE_URL_N8N) throw new Error('Missing env TEAMCITY_BASE_URL_N8N');\nif (!$env.TEAMCITY_TOKEN) throw new Error('Missing env TEAMCITY_TOKEN');\n\nconst maxTestsRaw = Number(\n  input.maxTests ??\n  input.max_tests ??\n  parsedInput?.maxTests ??\n  parsedInput?.max_tests ??\n  25\n);\nconst maxTests = Number.isFinite(maxTestsRaw) && maxTestsRaw > 0 ? Math.min(Math.floor(maxTestsRaw), 200) : 25;\n\nreturn [{\n  json: {\n    teamcity: {\n      baseUrl: $env.TEAMCITY_BASE_URL_N8N,\n      token: $env.TEAMCITY_TOKEN\n    },\n    request: {\n      buildTypeId,\n      maxTests,\n      source: 'executeWorkflowTrigger'\n    },\n    generatedAt: new Date().toISOString()\n  }\n}];"
       },
-      "id": "bcb5f13f-5380-4f47-8b5b-6e850f2f2436",
+      "id": "28a22241-e38d-4923-ae92-8614332b14e5",
       "name": "Build Query Context (Execute)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -80,
-        128
+        -688,
+        496
       ]
     },
     {
       "parameters": {
         "jsCode": "const input = $json || {};\n\nconst providedBuildTypeId = String(\n  input.buildTypeId ??\n  input.build_type_id ??\n  input.buildType ??\n  input.btId ??\n  ''\n).trim();\n\nconst defaultBuildTypeId = String($env.TEAMCITY_DEFAULT_PASSED_BUILD_TYPE_ID ?? $env.TEAMCITY_DEFAULT_FAILED_BUILD_TYPE_ID ?? '').trim();\nconst buildTypeId = providedBuildTypeId || defaultBuildTypeId;\n\nif (!buildTypeId) {\n  throw new Error('Missing buildTypeId. Set TEAMCITY_DEFAULT_PASSED_BUILD_TYPE_ID in .env or pass buildTypeId manually.');\n}\nif (!$env.TEAMCITY_BASE_URL_N8N) throw new Error('Missing env TEAMCITY_BASE_URL_N8N');\nif (!$env.TEAMCITY_TOKEN) throw new Error('Missing env TEAMCITY_TOKEN');\n\nconst maxTestsRaw = Number(input.maxTests ?? input.max_tests ?? 25);\nconst maxTests = Number.isFinite(maxTestsRaw) && maxTestsRaw > 0 ? Math.min(Math.floor(maxTestsRaw), 200) : 25;\n\nreturn [{\n  json: {\n    teamcity: {\n      baseUrl: $env.TEAMCITY_BASE_URL_N8N,\n      token: $env.TEAMCITY_TOKEN\n    },\n    request: {\n      buildTypeId,\n      maxTests,\n      source: 'manualTrigger'\n    },\n    generatedAt: new Date().toISOString()\n  }\n}];"
       },
-      "id": "b8e760f8-72ea-4706-a3fc-e6b2b40be8e5",
+      "id": "9b06392e-64d1-4593-9918-a07da565160c",
       "name": "Build Query Context (Manual)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -80,
-        320
+        -688,
+        688
       ]
     },
     {
@@ -84,13 +90,13 @@
           }
         }
       },
-      "id": "b9f42f35-7530-4178-a33b-2b7cdad55e8d",
+      "id": "26f342fa-6cd5-44b7-ac7d-9a77ed408234",
       "name": "Fetch BuildType List",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
       "position": [
-        208,
-        80
+        -400,
+        448
       ],
       "retryOnFail": true,
       "maxTries": 3,
@@ -134,13 +140,13 @@
           }
         }
       },
-      "id": "aa5f4ab2-a6f2-4d2f-8b75-5aa47fa89f7e",
+      "id": "18d50527-3fab-48f5-9933-9ec9adcd2619",
       "name": "Find Latest Successful Build",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
       "position": [
-        208,
-        336
+        -400,
+        704
       ],
       "retryOnFail": true,
       "maxTries": 3,
@@ -151,13 +157,13 @@
       "parameters": {
         "jsCode": "let ctx = {};\n\ntry {\n  ctx = $items('Build Query Context (Execute)')[0]?.json || {};\n} catch (_) {}\n\nif (!ctx || !Object.keys(ctx).length) {\n  try {\n    ctx = $items('Build Query Context (Manual)')[0]?.json || {};\n  } catch (_) {}\n}\n\nlet buildTypeListRaw = {};\ntry {\n  buildTypeListRaw = $items('Fetch BuildType List')[0]?.json || {};\n} catch (_) {}\n\nconst buildTypeListSrc = buildTypeListRaw?.body && typeof buildTypeListRaw.body === 'object' ? buildTypeListRaw.body : buildTypeListRaw;\nconst allBuildTypes = Array.isArray(buildTypeListSrc.buildType) ? buildTypeListSrc.buildType : [];\nconst requestedBuildTypeId = String(ctx.request?.buildTypeId || '').trim();\nconst matchedBuildType = requestedBuildTypeId\n  ? (allBuildTypes.find((bt) => String(bt?.id || '') === requestedBuildTypeId) || null)\n  : null;\n\nconst src = $json?.body && typeof $json.body === 'object' ? $json.body : ($json || {});\nconst builds = Array.isArray(src.build) ? src.build : [];\nconst successfulBuild = builds[0] || null;\n\nreturn [{\n  json: {\n    ...ctx,\n    buildTypeExists: !!matchedBuildType,\n    buildType: matchedBuildType\n      ? {\n          id: matchedBuildType.id || null,\n          name: matchedBuildType.name || null,\n          projectId: matchedBuildType.projectId || null,\n          projectName: matchedBuildType.projectName || null\n        }\n      : null,\n    build: successfulBuild\n  }\n}];"
       },
-      "id": "81e556ec-5f97-4481-9010-c224ab11bf1d",
+      "id": "8240212f-c1b9-45aa-b549-e02a8482cdde",
       "name": "Attach Build Details",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        464,
-        224
+        -144,
+        592
       ]
     },
     {
@@ -197,13 +203,13 @@
           }
         }
       },
-      "id": "fbc35149-7e9e-4f9d-9a7c-5bebbe0adf95",
+      "id": "07f33ac6-9ed4-478e-99c2-0ec823dafc34",
       "name": "Fetch Passed Tests",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
       "position": [
-        720,
-        224
+        112,
+        592
       ],
       "retryOnFail": true,
       "maxTries": 3,
@@ -214,26 +220,26 @@
       "parameters": {
         "jsCode": "const ctx = $items('Attach Build Details')[0]?.json || {};\nconst src = $json?.body && typeof $json.body === 'object' ? $json.body : ($json || {});\nconst testOccurrences = Array.isArray(src.testOccurrence) ? src.testOccurrence : [];\n\nconst passedTests = testOccurrences.map((t) => ({\n  name: t.name || null,\n  status: t.status || null,\n  duration: t.duration || null,\n  details: t.details || null,\n  runOrder: t.runOrder || null\n}));\n\nconst hasBuild = !!ctx.build;\nconst hasPassedTests = passedTests.length > 0;\nconst buildTypeExists = ctx.buildTypeExists === true;\n\nconst snapshot = {\n  snapshotType: 'teamcity_passed_tests',\n  createdAt: new Date().toISOString(),\n  requestSource: ctx.request?.source || null,\n  buildTypeId: ctx.request?.buildTypeId || null,\n  buildTypeExists,\n  buildType: ctx.buildType || null,\n  buildId: ctx.build?.id || null,\n  maxTestsRequested: ctx.request?.maxTests || null,\n  teamcityBaseUrl: ctx.teamcity?.baseUrl || null,\n  build: ctx.build || null,\n  totalPassedTests: passedTests.length,\n  passedTests,\n  resultCode: !buildTypeExists\n    ? 'BUILD_TYPE_NOT_FOUND'\n    : (!hasBuild ? 'NO_SUCCESSFUL_BUILD' : (hasPassedTests ? 'PASSED_TESTS_FOUND' : 'NO_PASSED_TESTS')),\n  message: !buildTypeExists\n    ? ('Build type ID not found: ' + (ctx.request?.buildTypeId || 'unknown'))\n    : (hasBuild\n        ? (hasPassedTests ? 'Passed tests were found.' : 'Build found, but no passed tests were returned.')\n        : 'No successful build found for this build type ID.')\n};\n\nreturn [{ json: snapshot }];"
       },
-      "id": "3634d3df-ac90-4bd1-a7d4-b81f45b58e89",
+      "id": "409ad50b-19e0-418b-8a45-91d71075ec28",
       "name": "Build Passed Tests Snapshot",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        992,
-        224
+        384,
+        592
       ]
     },
     {
       "parameters": {
         "jsCode": "const snapshot = $json;\n\nconst pathTemplate = String(\n  $env.TEAMCITY_AI_PASSED_TESTS_PATH ??\n  '/data/n8n-exports/teamcity/passed-tests-{buildTypeId}.json'\n);\n\nconst buildTypeIdForFile = String(snapshot.buildTypeId || 'unknown-buildType').trim();\nconst hasBuildId = !!snapshot.buildId;\nconst buildIdForFile = hasBuildId ? String(snapshot.buildId) : '';\n\nlet filePath = pathTemplate;\nfilePath = filePath.replace('{buildTypeId}', buildTypeIdForFile);\nfilePath = filePath.replace('{buildId}', buildIdForFile);\n\nconst fileName = hasBuildId\n  ? `passed-tests-${buildTypeIdForFile}-build-${buildIdForFile}.json`\n  : `passed-tests-${buildTypeIdForFile}.json`;\n\nconst jsonText = JSON.stringify(snapshot, null, 2);\n\nreturn [{\n  json: {\n    ...snapshot,\n    filePath\n  },\n  binary: {\n    data: {\n      data: Buffer.from(jsonText, 'utf8').toString('base64'),\n      mimeType: 'application/json',\n      fileName\n    }\n  }\n}];"
       },
-      "id": "2983c72e-b5f6-4f8f-9ef5-d89de07bf8ca",
+      "id": "d44ba788-f2c3-4482-92e5-b94400b92b9f",
       "name": "Prepare Passed Tests File",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1248,
-        224
+        640,
+        592
       ]
     },
     {
@@ -241,26 +247,26 @@
         "fileName": "={{ $json.filePath }}",
         "options": {}
       },
-      "id": "f31b8f41-c322-4d9d-a1ec-06063144f085",
+      "id": "e35d804c-2974-4233-9f0e-5c8bb023c325",
       "name": "Write Passed Tests File",
       "type": "n8n-nodes-base.writeBinaryFile",
       "typeVersion": 1,
       "position": [
-        1504,
-        224
+        896,
+        592
       ]
     },
     {
       "parameters": {
         "jsCode": "const prepared = $items('Prepare Passed Tests File')[0]?.json || {};\n\nreturn [{\n  json: {\n    ok: true,\n    resultCode: prepared.resultCode || null,\n    message: prepared.message || null,\n    buildTypeId: prepared.buildTypeId || null,\n    buildTypeExists: prepared.buildTypeExists === true,\n    buildType: prepared.buildType || null,\n    buildId: prepared.buildId || null,\n    build: prepared.build || null,\n    totalPassedTests: prepared.totalPassedTests || 0,\n    passedTests: prepared.passedTests || [],\n    filePath: prepared.filePath || null\n  }\n}];"
       },
-      "id": "fd52fdb3-6adf-438d-bae3-613f6a39884c",
+      "id": "02f737f4-0147-4e46-8291-a153e4985f69",
       "name": "Final Output",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1760,
-        224
+        1152,
+        592
       ]
     }
   ],
@@ -394,14 +400,17 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "ec83f8dd-6127-4f3d-90c0-8f0db6bf128c",
+  "versionId": "b1b72ab8-3672-46ea-8d73-eafacb02e1a6",
   "meta": {
     "instanceId": "e49844d4d683cac13f54084fa5356b54658c12021c031a45c13b3f26e54bf57a"
   },
   "nodeGroups": [],
-  "id": "N8wX2g0Vf4CkL9yP",
+  "id": "cRg00cvYHSnAMnOJ",
   "tags": [
     {
+      "updatedAt": "2026-06-25T07:00:37.195Z",
+      "createdAt": "2026-06-25T07:00:37.195Z",
+      "id": "FayBN1pexKl90DVB",
       "name": "TeamCity-AI"
     }
   ]
