@@ -2,6 +2,10 @@
 
 Local Docker Compose lab for TeamCity (REST + MCP test flows), n8n (UI + chat/webhooks), and Ollama.
 
+<p align="center">
+  <img src="docs/screenshots/teamcity-n8n-lab-intro.svg" alt="TeamCity n8n Lab Intro" width="100%">
+</p>
+
 ## Table of Contents
 
 - [Architecture Overview](#architecture-overview)

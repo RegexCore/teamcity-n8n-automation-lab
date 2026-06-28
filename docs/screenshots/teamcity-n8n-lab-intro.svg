@@ -1,0 +1,280 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="682" viewBox="0 0 2048 682" role="img" aria-labelledby="title desc">
+  <title id="title">Animated TeamCity+n8n Local Automation Lab Banner</title>
+  <desc id="desc">Neon cyber banner with animated background streams, particles, terminal glow, and automation labels.</desc>
+
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#050817"/>
+      <stop offset="0.45" stop-color="#060917"/>
+      <stop offset="0.72" stop-color="#07051b"/>
+      <stop offset="1" stop-color="#0d0728"/>
+      <animate attributeName="x1" values="0;.08;0" dur="12s" repeatCount="indefinite"/>
+      <animate attributeName="y2" values="1;.85;1" dur="14s" repeatCount="indefinite"/>
+    </linearGradient>
+
+    <radialGradient id="blueBurst" cx="16%" cy="50%" r="44%">
+      <stop offset="0" stop-color="#00d5ff" stop-opacity=".33"/>
+      <stop offset=".42" stop-color="#0b5fff" stop-opacity=".12"/>
+      <stop offset="1" stop-color="#001020" stop-opacity="0"/>
+      <animate attributeName="cx" values="12%;18%;12%" dur="10s" repeatCount="indefinite"/>
+    </radialGradient>
+
+    <radialGradient id="purpleBurst" cx="90%" cy="50%" r="44%">
+      <stop offset="0" stop-color="#9b2dff" stop-opacity=".36"/>
+      <stop offset=".48" stop-color="#6c20ff" stop-opacity=".13"/>
+      <stop offset="1" stop-color="#120020" stop-opacity="0"/>
+      <animate attributeName="cx" values="88%;94%;88%" dur="11s" repeatCount="indefinite"/>
+    </radialGradient>
+
+    <linearGradient id="titleGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#46f7ff"/>
+      <stop offset=".55" stop-color="#11a9ff"/>
+      <stop offset="1" stop-color="#b458ff"/>
+      <animate attributeName="x1" values="0;-.2;0" dur="5s" repeatCount="indefinite"/>
+      <animate attributeName="x2" values="1;1.2;1" dur="5s" repeatCount="indefinite"/>
+    </linearGradient>
+
+    <linearGradient id="buttonGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#001623" stop-opacity=".85"/>
+      <stop offset="1" stop-color="#13002d" stop-opacity=".88"/>
+    </linearGradient>
+
+    <linearGradient id="dashGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#00ecff"/>
+      <stop offset=".55" stop-color="#2b78ff"/>
+      <stop offset="1" stop-color="#ff43ff"/>
+    </linearGradient>
+
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M48 0H0V48" fill="none" stroke="#1c86ff" stroke-opacity=".13" stroke-width="1"/>
+    </pattern>
+
+    <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.00  0 0 0 0 0.90  0 0 0 0 1.00  0 0 0 .8 0" result="cyan"/>
+      <feMerge><feMergeNode in="cyan"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <filter id="purpleGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 .82  0 0 0 0 .18  0 0 0 0 1  0 0 0 .85 0" result="purple"/>
+      <feMerge><feMergeNode in="purple"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <filter id="bigGlow" x="-120%" y="-120%" width="340%" height="340%">
+      <feGaussianBlur stdDeviation="10" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <path id="orbit1" d="M510 130 C 760 30, 1010 120, 1165 110 S 1505 20, 1760 130 S 1990 310, 1850 465 S 1460 665, 1085 612 S 520 650, 295 520"/>
+    <path id="orbit2" d="M55 352 C 255 305, 480 330, 710 415 S 1125 560, 1420 510 S 1730 415, 2010 430"/>
+    <path id="orbit3" d="M58 65 C 210 130, 330 210, 500 170 S 810 20, 1025 56"/>
+
+    <style><![CDATA[
+      .fontMain { font-family: Inter, Segoe UI, Arial, sans-serif; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Consolas, Menlo, monospace; }
+      .panel { fill: rgba(8, 12, 35, .78); stroke-width: 2.5; }
+      .glowC { filter: url(#softGlow); }
+      .glowP { filter: url(#purpleGlow); }
+      .dash { stroke-dasharray: 12 24; animation: flowDash 8s linear infinite; }
+      .dashSlow { stroke-dasharray: 22 34; animation: flowDash 16s linear infinite reverse; }
+      .stream { stroke-dasharray: 260 520; animation: streamMove 7s linear infinite; opacity:.9; }
+      .floatA { animation: floatA 5.5s ease-in-out infinite; transform-box: fill-box; transform-origin:center; }
+      .floatB { animation: floatB 6.3s ease-in-out infinite; transform-box: fill-box; transform-origin:center; }
+      .pulse { animation: pulse 2.6s ease-in-out infinite; transform-box: fill-box; transform-origin:center; }
+      .pulse2 { animation: pulse 3.4s ease-in-out infinite reverse; transform-box: fill-box; transform-origin:center; }
+      .blink { animation: blink 1.2s steps(2,end) infinite; }
+      .terminal { animation: terminalHover 7s ease-in-out infinite; transform-box: fill-box; transform-origin:center; }
+      .spark { animation: spark 2.4s ease-in-out infinite; transform-box: fill-box; transform-origin:center; }
+      .button { fill: url(#buttonGrad); stroke-width: 2; }
+      .buttonText { font-weight: 700; font-size: 24px; letter-spacing: .3px; }
+      .smallLabel { font-size: 30px; fill:#e9f5ff; font-weight:700; letter-spacing:1px; }
+      .movingGrid { animation: gridPan 18s linear infinite; }
+      .ray { stroke-linecap: round; opacity:.55; animation: ray 4s ease-in-out infinite; }
+      .ray:nth-of-type(2n) { animation-duration: 5.6s; }
+      .ray:nth-of-type(3n) { animation-duration: 7s; }
+
+      @keyframes flowDash { to { stroke-dashoffset: -280; } }
+      @keyframes streamMove { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -780; } }
+      @keyframes floatA { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-11px) rotate(2deg); } }
+      @keyframes floatB { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(12px) rotate(-2deg); } }
+      @keyframes pulse { 0%,100% { opacity:.65; transform: scale(.98); } 50% { opacity:1; transform: scale(1.08); } }
+      @keyframes blink { 0%,45% { opacity:1; } 46%,100% { opacity:.25; } }
+      @keyframes terminalHover { 0%,100% { transform: translateY(0) rotate(1.8deg); } 50% { transform: translateY(-10px) rotate(1.2deg); } }
+      @keyframes gridPan { from { transform: translate(0,0); } to { transform: translate(-48px,-48px); } }
+      @keyframes spark { 0%,100% { opacity:.35; transform:scale(.7); } 40% { opacity:1; transform:scale(1.45); } }
+      @keyframes ray { 0%,100% { opacity:.12; stroke-dashoffset:0; } 50% { opacity:.82; stroke-dashoffset:-120; } }
+    ]]></style>
+  </defs>
+
+  <!-- outer frame -->
+  <rect width="2048" height="682" rx="28" fill="url(#bg)"/>
+  <rect width="2048" height="682" rx="28" fill="url(#blueBurst)"/>
+  <rect width="2048" height="682" rx="28" fill="url(#purpleBurst)"/>
+  <rect class="movingGrid" x="0" y="0" width="2144" height="778" fill="url(#grid)" opacity=".32"/>
+  <rect x="1.5" y="1.5" width="2045" height="679" rx="27" fill="none" stroke="#5c73ff" stroke-opacity=".35" stroke-width="3"/>
+
+  <!-- left flowing neon ribbons -->
+  <g fill="none" stroke-linecap="round" opacity=".88">
+    <path class="stream" d="M-60 395 C 150 310, 260 330, 426 340 C 570 348, 642 370, 805 447" stroke="#00dcff" stroke-width="8" filter="url(#bigGlow)"/>
+    <path class="stream" d="M-80 308 C 125 360, 238 330, 420 315 C 610 296, 706 260, 830 250" stroke="#2b7bff" stroke-width="5" filter="url(#softGlow)" style="animation-delay:-2s"/>
+    <path class="stream" d="M-100 512 C 140 468, 256 468, 390 515 C 512 558, 588 598, 716 615" stroke="#b43cff" stroke-width="7" filter="url(#purpleGlow)" style="animation-delay:-4s"/>
+    <path class="stream" d="M-40 198 C 170 280, 300 345, 475 352 C 620 357, 820 405, 1006 608" stroke="#7f31ff" stroke-width="4" filter="url(#purpleGlow)" style="animation-delay:-1s"/>
+    <path class="stream" d="M-70 355 C 170 347, 290 360, 520 355" stroke="#75faff" stroke-width="2" style="animation-delay:-3s"/>
+  </g>
+
+  <!-- rays and speed lines -->
+  <g fill="none" stroke-dasharray="80 90">
+    <path class="ray" d="M54 41 C 180 91, 285 116, 412 206" stroke="#244cff" stroke-width="1.5"/>
+    <path class="ray" d="M0 118 C 220 198, 362 231, 590 243" stroke="#06dfff" stroke-width="2"/>
+    <path class="ray" d="M26 565 C 224 503, 375 514, 548 574" stroke="#ad3eff" stroke-width="2"/>
+    <path class="ray" d="M1872 88 C 1780 112, 1652 146, 1515 196" stroke="#8c31ff" stroke-width="1.6"/>
+    <path class="ray" d="M2050 390 C 1888 370, 1740 405, 1600 468" stroke="#cf3dff" stroke-width="2"/>
+    <path class="ray" d="M2015 26 C 1900 61, 1765 89, 1638 135" stroke="#672cff" stroke-width="1.4"/>
+  </g>
+
+  <!-- orbit paths -->
+  <g fill="none">
+    <use href="#orbit1" class="dashSlow" stroke="url(#dashGrad)" stroke-width="3" opacity=".88"/>
+    <use href="#orbit2" class="dash" stroke="#00e6ff" stroke-width="2.4" opacity=".72"/>
+    <use href="#orbit3" class="dash" stroke="#00d9ff" stroke-width="2" opacity=".65"/>
+  </g>
+
+  <!-- traveling particles on paths -->
+  <g filter="url(#bigGlow)">
+    <circle r="9" fill="#6cf7ff">
+      <animateMotion dur="7.5s" repeatCount="indefinite"><mpath href="#orbit1"/></animateMotion>
+    </circle>
+    <circle r="7" fill="#ba54ff">
+      <animateMotion dur="9.2s" begin="-2s" repeatCount="indefinite"><mpath href="#orbit1"/></animateMotion>
+    </circle>
+    <circle r="6" fill="#24ddff">
+      <animateMotion dur="6.6s" begin="-1.4s" repeatCount="indefinite"><mpath href="#orbit2"/></animateMotion>
+    </circle>
+    <circle r="5" fill="#b72cff">
+      <animateMotion dur="8.1s" begin="-3.2s" repeatCount="indefinite"><mpath href="#orbit2"/></animateMotion>
+    </circle>
+  </g>
+
+  <!-- small star field -->
+  <g opacity=".9" filter="url(#softGlow)">
+    <circle class="spark" cx="102" cy="58" r="3" fill="#8c6cff"/>
+    <circle class="spark" cx="201" cy="263" r="5" fill="#00eaff" style="animation-delay:-.5s"/>
+    <circle class="spark" cx="155" cy="416" r="5" fill="#8f60ff" style="animation-delay:-1s"/>
+    <circle class="spark" cx="626" cy="631" r="11" fill="#3cebff" style="animation-delay:-.9s"/>
+    <circle class="spark" cx="727" cy="62" r="13" fill="#4cf6ff" style="animation-delay:-1.7s"/>
+    <circle class="spark" cx="1176" cy="84" r="12" fill="#7169ff" style="animation-delay:-2.2s"/>
+    <circle class="spark" cx="1652" cy="588" r="11" fill="#b457ff" style="animation-delay:-.7s"/>
+    <circle class="spark" cx="1950" cy="224" r="5" fill="#b13dff" style="animation-delay:-1.6s"/>
+    <circle class="spark" cx="1918" cy="86" r="3" fill="#8e6dff" style="animation-delay:-2.4s"/>
+  </g>
+
+  <!-- left floating tech icons -->
+  <g class="floatA glowC">
+    <path d="M252 78 L294 102 L294 151 L252 175 L210 151 L210 102 Z" fill="#061b2c" stroke="#11e6ff" stroke-width="2"/>
+    <text x="252" y="137" text-anchor="middle" class="mono" font-size="38" font-weight="700" fill="#57f4ff">&lt;/&gt;</text>
+  </g>
+
+  <g class="floatB glowP">
+    <path d="M348 196 L388 220 L388 268 L348 292 L308 268 L308 220 Z" fill="#160a2f" stroke="#be54ff" stroke-width="2"/>
+    <circle cx="331" cy="239" r="8" fill="none" stroke="#f0d6ff" stroke-width="3"/>
+    <circle cx="367" cy="221" r="8" fill="none" stroke="#f0d6ff" stroke-width="3"/>
+    <circle cx="369" cy="265" r="8" fill="none" stroke="#f0d6ff" stroke-width="3"/>
+    <path d="M339 235 L359 225 M338 243 L361 260" stroke="#f0d6ff" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  <g class="floatA glowC" style="animation-delay:-1.4s">
+    <rect x="232" y="379" width="82" height="82" rx="18" fill="#061b2c" stroke="#13e6ff" stroke-width="2"/>
+    <ellipse cx="273" cy="407" rx="18" ry="8" fill="none" stroke="#66f7ff" stroke-width="3"/>
+    <path d="M255 407 V435 C255 440,291 440,291 435 V407 M255 422 C255 427,291 427,291 422" fill="none" stroke="#66f7ff" stroke-width="3"/>
+  </g>
+
+  <g class="floatB glowP" style="animation-delay:-1s">
+    <path d="M205 487 L252 487 L284 520 L252 568 L205 568 L172 520 Z" fill="#160a2f" stroke="#be54ff" stroke-width="2"/>
+    <text x="228" y="538" text-anchor="middle" class="mono" font-size="36" font-weight="700" fill="#ffd5ff">{}</text>
+  </g>
+
+  <!-- dotted data blocks -->
+  <g fill="#00cfff" opacity=".65">
+    <circle cx="328" cy="36" r="1.8"/><circle cx="362" cy="36" r="1.8"/><circle cx="386" cy="36" r="1.8"/>
+    <circle cx="328" cy="65" r="1.8"/><circle cx="360" cy="65" r="1.8"/><circle cx="386" cy="65" r="1.8"/>
+    <circle cx="338" cy="94" r="1.8"/><circle cx="367" cy="94" r="1.8"/><circle cx="398" cy="94" r="1.8"/>
+    <circle cx="804" cy="106" r="2"/><circle cx="827" cy="106" r="2"/><circle cx="852" cy="106" r="2"/>
+    <circle cx="802" cy="127" r="1.7"/><circle cx="835" cy="127" r="1.7"/><circle cx="866" cy="127" r="1.7"/>
+  </g>
+
+  <!-- central title block -->
+  <g class="fontMain">
+    <text x="1024" y="179" text-anchor="middle" font-size="36" font-weight="700" letter-spacing="21" fill="#15e9ff" filter="url(#softGlow)">LOCAL AUTOMATION LAB</text>
+    <text x="1024" y="312" text-anchor="middle" font-size="122" font-weight="900" letter-spacing="-5" fill="url(#titleGrad)" filter="url(#softGlow)">TeamCity+n8n</text>
+    <text x="1024" y="398" text-anchor="middle" font-size="48" font-weight="850" fill="#f4f8ff" filter="url(#softGlow)">REST • MCP • Automation • Local AI</text>
+    <text x="1024" y="459" text-anchor="middle" font-size="29" font-weight="500" fill="#7e9fda">compose up <tspan fill="#0ce6ff">•</tspan> seed projects <tspan fill="#0ce6ff">•</tspan> inspect raw flows <tspan fill="#ad49ff">•</tspan> iterate fast</text>
+  </g>
+
+  <!-- action buttons -->
+  <g class="fontMain">
+    <g class="pulse2">
+      <rect class="button" x="454" y="503" width="280" height="73" rx="36" stroke="#07eaff" filter="url(#softGlow)"/>
+      <path d="M503 521 l15 -7 l15 7 v17 c0 16 -15 24 -15 24 s-15 -8 -15 -24z" fill="none" stroke="#3cf5ff" stroke-width="3"/>
+      <path d="M511 538 l6 6 l12 -16" fill="none" stroke="#3cf5ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <text class="buttonText" x="544" y="550" fill="#32f5ff">REST checks</text>
+    </g>
+    <g class="pulse" style="animation-delay:-.7s">
+      <rect class="button" x="759" y="503" width="232" height="73" rx="36" stroke="#3e79ff" filter="url(#softGlow)"/>
+      <path d="M815 523 l17 9 v20 l-17 10 l-17 -10 v-20z M798 532 l17 10 l17 -10 M815 542 v20" fill="none" stroke="#7194ff" stroke-width="3"/>
+      <text class="buttonText" x="852" y="550" fill="#71a4ff">MCP lab</text>
+    </g>
+    <g class="pulse2" style="animation-delay:-1.3s">
+      <rect class="button" x="1014" y="503" width="265" height="73" rx="36" stroke="#d94eff" filter="url(#purpleGlow)"/>
+      <circle cx="1061" cy="541" r="7" fill="none" stroke="#ff9bff" stroke-width="3"/><circle cx="1086" cy="527" r="7" fill="none" stroke="#ff9bff" stroke-width="3"/><circle cx="1088" cy="557" r="7" fill="none" stroke="#ff9bff" stroke-width="3"/>
+      <path d="M1068 537 L1079 531 M1068 545 L1080 553" stroke="#ff9bff" stroke-width="3" stroke-linecap="round"/>
+      <text class="buttonText" x="1110" y="550" fill="#ff9dff">AI workflow</text>
+    </g>
+    <g class="pulse" style="animation-delay:-2s">
+      <rect class="button" x="1303" y="503" width="263" height="73" rx="36" stroke="#0be7ff" filter="url(#softGlow)"/>
+      <rect x="1339" y="525" width="34" height="12" rx="3" fill="none" stroke="#42f5ff" stroke-width="3"/><rect x="1339" y="546" width="34" height="12" rx="3" fill="none" stroke="#42f5ff" stroke-width="3"/>
+      <circle cx="1348" cy="531" r="2" fill="#42f5ff"/><circle cx="1348" cy="552" r="2" fill="#42f5ff"/>
+      <text class="buttonText" x="1394" y="550" fill="#83f5ff">Local stack</text>
+    </g>
+  </g>
+
+  <!-- right labels -->
+  <g class="fontMain glowP">
+    <rect x="1658" y="81" width="190" height="77" rx="22" fill="#14082d" stroke="#9f52ff" stroke-width="2"/>
+    <text x="1753" y="129" text-anchor="middle" font-size="26" fill="#f5eaff">webhooks</text>
+    <rect x="1740" y="500" width="142" height="68" rx="19" fill="#15072e" stroke="#bd4fff" stroke-width="2"/>
+    <text x="1811" y="543" text-anchor="middle" font-size="28" fill="#ffffff" font-weight="700">raw IO</text>
+  </g>
+
+  <!-- terminal panel -->
+  <g class="terminal">
+    <path d="M1512 145 L1885 166 Q1914 168 1921 199 L1875 456 Q1868 482 1841 480 L1487 448 Q1456 445 1452 414 L1481 174 Q1485 144 1512 145 Z" fill="#07122b" stroke="#3e7cff" stroke-width="2.2" filter="url(#softGlow)"/>
+    <path d="M1483 178 L1920 204" stroke="#2a78ff" stroke-opacity=".55" stroke-width="1.4"/>
+    <circle cx="1502" cy="173" r="8" fill="#ff4e61"/><circle cx="1532" cy="175" r="8" fill="#ffcf37"/><circle cx="1563" cy="177" r="8" fill="#48f174"/>
+    <circle cx="1889" cy="196" r="4" fill="none" stroke="#506bff" stroke-width="2"/>
+
+    <g class="mono" font-size="27" fill="#bcfff6">
+      <text x="1495" y="261"><tspan fill="#16f48b">$</tspan> docker compose up</text>
+      <text x="1493" y="312"><tspan fill="#29ff91">[✓]</tspan> lab online</text>
+      <text x="1491" y="361"><tspan fill="#29ff91">[✓]</tspan> requests traced</text>
+      <text x="1489" y="413"><tspan fill="#29ff91">[✓]</tspan> experiments ready<tspan class="blink">_</tspan></text>
+    </g>
+  </g>
+
+  <!-- right connection accents -->
+  <g fill="none" stroke-linecap="round">
+    <path class="dash" d="M1640 459 C 1685 485, 1710 518, 1738 519" stroke="#b146ff" stroke-width="2.3"/>
+    <path class="dashSlow" d="M1828 156 C 1960 176, 2009 250, 1973 343" stroke="#c936ff" stroke-width="3"/>
+    <path class="dash" d="M1566 573 C 1645 590, 1715 570, 1770 548" stroke="#7a42ff" stroke-width="2"/>
+  </g>
+
+  <!-- arrow ticks -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".92">
+    <path class="dash" d="M297 111 C350 132,416 155,522 101" stroke="#00e6ff" stroke-width="2"/>
+    <path d="M522 101 l-7 -7 m7 7 l-3 10" stroke="#00e6ff" stroke-width="3" filter="url(#softGlow)"/>
+    <path class="dash" d="M285 538 C390 546,480 575,414 610" stroke="#00e6ff" stroke-width="2"/>
+    <path d="M414 610 l-12 -4 m12 4 l-3 12" stroke="#00e6ff" stroke-width="3" filter="url(#softGlow)"/>
+    <path d="M966 604 l15 13 l-14 16" stroke="#e04cff" stroke-width="4" filter="url(#purpleGlow)"/>
+    <path d="M1720 520 l-17 -13 m17 13 l-18 10" stroke="#b54cff" stroke-width="3" filter="url(#purpleGlow)"/>
+  </g>
+</svg>
