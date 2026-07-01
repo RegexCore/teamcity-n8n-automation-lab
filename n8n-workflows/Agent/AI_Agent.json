@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "jsCode": "const src = $input.first()?.json ?? {};\nlet output = src.output ?? src.text ?? src.response ?? src.answer ?? '';\n\nif (typeof output !== 'string') {\n  try {\n    output = JSON.stringify(output, null, 2);\n  } catch (_) {\n    output = String(output);\n  }\n}\n\nlet fromWebhook = false;\ntry {\n  const webhookItems = $items('Webhook Trigger');\n  fromWebhook = Array.isArray(webhookItems) && webhookItems.length > 0;\n} catch (_) {\n  fromWebhook = false;\n}\n\nreturn [{\n  json: {\n    output: output,\n    text: output,\n    fromWebhook: fromWebhook\n  }\n}];"
+        "jsCode": "const src = $input.first()?.json ?? {};\nlet output = src.output ?? src.text ?? src.response ?? src.answer ?? '';\n\nif (typeof output !== 'string') {\n  try {\n    output = JSON.stringify(output, null, 2);\n  } catch (_) {\n    output = String(output);\n  }\n}\n\nlet fromWebhook = false;\ntry {\n  const normalizedItems = $('Normalize Webhook Input').all();\n  fromWebhook = Array.isArray(normalizedItems) && normalizedItems.length > 0;\n} catch (_) {\n  fromWebhook = false;\n}\n\nreturn [{\n  json: {\n    output: output,\n    text: output,\n    fromWebhook: fromWebhook\n  }\n}];"
       },
       "id": "d54b18ee-eded-4811-8702-4655f327564c",
       "name": "Select Output1",
@@ -83,7 +83,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const src = $input.first()?.json ?? {};\nconst body = src.body && typeof src.body === 'object' ? src.body : src;\nconst chatInput = (body.message ?? body.input ?? body.chatInput ?? body.text ?? '').toString().trim();\n\nif (!chatInput) {\n  throw new Error('Webhook payload requires one of: message, input, chatInput, text');\n}\n\nconst providedSessionId = (body.conversationId ?? body.sessionId ?? body.userId ?? '').toString().trim();\nconst sessionId = providedSessionId || `webhook-${Date.now()}`;\n\nreturn [{\n  json: {\n    chatInput,\n    sessionId,\n    webhookPayload: body\n  }\n}];"
+        "jsCode": "const src = $input.first()?.json ?? {};\nconst body = src.body && typeof src.body === 'object' ? src.body : src;\nconst headers = src.headers && typeof src.headers === 'object' ? src.headers : {};\nconst expectedToken = (($env.N8N_WEBHOOK_TOKEN ?? '') + '').trim();\n\nif (!expectedToken) {\n  throw new Error('Server webhook token is not configured. Set N8N_WEBHOOK_TOKEN in the container environment.');\n}\n\nconst providedToken = (headers['x-webhook-token'] ?? headers['X-Webhook-Token'] ?? headers['authorization'] ?? '').toString().trim();\nif (!providedToken) {\n  throw new Error('Missing webhook token header. Provide X-Webhook-Token.');\n}\n\nconst bearerPrefix = 'Bearer ';\nconst normalizedProvidedToken = providedToken.startsWith(bearerPrefix) ? providedToken.slice(bearerPrefix.length).trim() : providedToken;\nif (normalizedProvidedToken !== expectedToken) {\n  throw new Error('Invalid webhook token.');\n}\n\nconst chatInput = (body.message ?? body.input ?? body.chatInput ?? body.text ?? '').toString().trim();\n\nif (!chatInput) {\n  throw new Error('Webhook payload requires one of: message, input, chatInput, text');\n}\n\nconst providedSessionId = (body.conversationId ?? body.sessionId ?? body.userId ?? '').toString().trim();\nconst sessionId = providedSessionId || `webhook-${Date.now()}`;\n\nreturn [{\n  json: {\n    chatInput,\n    sessionId,\n    webhookPayload: body\n  }\n}];"
       },
       "id": "3f0b3584-ea73-48c8-812e-a2456f7b52dc",
       "name": "Normalize Webhook Input",

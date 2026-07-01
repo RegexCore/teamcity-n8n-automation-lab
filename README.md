@@ -395,6 +395,10 @@ N8N_HOST=localhost
 N8N_PROTOCOL=http
 N8N_TIMEZONE=Europe/Berlin
 N8N_WEBHOOK_URL=http://localhost:5678/
+N8N_WEBHOOK_TOKEN=change-this-to-a-long-random-token
+N8N_BASIC_AUTH_ACTIVE=false
+N8N_BASIC_AUTH_USER=admin
+N8N_BASIC_AUTH_PASSWORD=change-this-password
 TEAMCITY_TOKEN=
 N8N_BLOCK_ENV_ACCESS_IN_NODE=false
 N8N_RESTRICT_FILE_ACCESS_TO=/data/n8n-exports
@@ -409,6 +413,10 @@ Meaning:
 - `N8N_PROTOCOL`: protocol (usually `http` locally)
 - `N8N_TIMEZONE`: timezone
 - `N8N_WEBHOOK_URL`: base for webhook URLs
+- `N8N_WEBHOOK_TOKEN`: required shared token for AI_Agent webhook calls (`X-Webhook-Token` header)
+- `N8N_BASIC_AUTH_ACTIVE`: optional global n8n Basic Auth switch (`true` or `false`)
+- `N8N_BASIC_AUTH_USER`: Basic Auth user when Basic Auth is enabled
+- `N8N_BASIC_AUTH_PASSWORD`: Basic Auth password when Basic Auth is enabled
 - `TEAMCITY_TOKEN`: TeamCity PAT for API calls from n8n workflows
 - `N8N_BLOCK_ENV_ACCESS_IN_NODE`: must be `false` in this lab if nodes access `$env`
 - `N8N_RESTRICT_FILE_ACCESS_TO`: allowed paths for file read/write nodes
@@ -604,22 +612,53 @@ Activation rule:
 - test URL requires `Execute workflow` in n8n editor before calling.
 - production URL requires workflow to be published/active.
 
+Security rule for this workflow:
+
+- send header `X-Webhook-Token` with the same value as `N8N_WEBHOOK_TOKEN`
+- optional: send `Authorization: Bearer <token>` instead
+
+PowerShell prep (run once per terminal session):
+
+```powershell
+$token = "change-this-to-a-long-random-token"
+$headers = @{ "X-Webhook-Token" = $token }
+```
+
 PowerShell (test URL):
 
 ```powershell
-Invoke-RestMethod -Method Post -Uri "http://localhost:5678/webhook-test/teamcity-ai-agent" -ContentType "application/json" -Body '{"message":"Zeig mir die fehlgeschlagenen Tests fuer demo_alpha_api"}'
+Invoke-RestMethod -Method Post -Uri "http://localhost:5678/webhook-test/teamcity-ai-agent" -Headers $headers -ContentType "application/json" -Body '{"message":"Zeig mir die fehlgeschlagenen Tests fuer demo_alpha_api"}'
 ```
 
 PowerShell (production URL):
 
 ```powershell
-Invoke-RestMethod -Method Post -Uri "http://localhost:5678/webhook/teamcity-ai-agent" -ContentType "application/json" -Body '{"message":"Zeig mir die fehlgeschlagenen Tests fuer demo_alpha_api"}'
+Invoke-RestMethod -Method Post -Uri "http://localhost:5678/webhook/teamcity-ai-agent" -Headers $headers -ContentType "application/json" -Body '{"message":"Zeig mir die fehlgeschlagenen Tests fuer demo_alpha_api"}'
+```
+
+PowerShell one-liner (production URL, token from `.env`):
+
+```powershell
+$t=(Get-Content .env | Where-Object { $_ -match '^N8N_WEBHOOK_TOKEN=' } | Select-Object -First 1).Split('=',2)[1].Trim(); Invoke-RestMethod -Method Post -Uri "http://localhost:5678/webhook/teamcity-ai-agent" -Headers @{ "X-Webhook-Token" = $t } -ContentType "application/json" -Body '{"message":"Zeig mir die fehlgeschlagenen Tests fuer demo_alpha_api"}'
+```
+
+curl prep (store token in variable):
+
+```bash
+# Bash / Git Bash / WSL
+TOKEN="change-this-to-a-long-random-token"
+```
+
+```cmd
+:: Windows CMD
+set TOKEN=change-this-to-a-long-random-token
 ```
 
 curl (test URL):
 
 ```bash
 curl -X POST "http://localhost:5678/webhook-test/teamcity-ai-agent" \
+  -H "X-Webhook-Token: $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"message":"Zeig mir die fehlgeschlagenen Tests fuer demo_alpha_api"}'
 ```
@@ -628,8 +667,18 @@ curl (production URL):
 
 ```bash
 curl -X POST "http://localhost:5678/webhook/teamcity-ai-agent" \
+  -H "X-Webhook-Token: $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"message":"Zeig mir die fehlgeschlagenen Tests fuer demo_alpha_api"}'
+```
+
+curl (Windows CMD, production URL):
+
+```cmd
+curl -X POST "http://localhost:5678/webhook/teamcity-ai-agent" ^
+  -H "X-Webhook-Token: %TOKEN%" ^
+  -H "Content-Type: application/json" ^
+  -d "{\"message\":\"Zeig mir die fehlgeschlagenen Tests fuer demo_alpha_api\"}"
 ```
 
 ### 2.8.3.1 PowerShell Output Truncation and Full Response
@@ -644,19 +693,19 @@ Show only full `output` text:
 PowerShell (test URL):
 
 ```powershell
-(Invoke-RestMethod -Method Post -Uri "http://localhost:5678/webhook-test/teamcity-ai-agent" -ContentType "application/json" -Body '{"message":"Zeig mir die fehlgeschlagenen Tests fuer demo_alpha_api"}').output
+(Invoke-RestMethod -Method Post -Uri "http://localhost:5678/webhook-test/teamcity-ai-agent" -Headers $headers -ContentType "application/json" -Body '{"message":"Zeig mir die fehlgeschlagenen Tests fuer demo_alpha_api"}').output
 ```
 
 PowerShell (production URL):
 
 ```powershell
-(Invoke-RestMethod -Method Post -Uri "http://localhost:5678/webhook/teamcity-ai-agent" -ContentType "application/json" -Body '{"message":"Zeig mir die fehlgeschlagenen Tests fuer demo_alpha_api"}').output
+(Invoke-RestMethod -Method Post -Uri "http://localhost:5678/webhook/teamcity-ai-agent" -Headers $headers -ContentType "application/json" -Body '{"message":"Zeig mir die fehlgeschlagenen Tests fuer demo_alpha_api"}').output
 ```
 
 Store response in variable and print full fields:
 
 ```powershell
-$r = Invoke-RestMethod -Method Post -Uri "http://localhost:5678/webhook/teamcity-ai-agent" -ContentType "application/json" -Body '{"message":"Zeig mir die fehlgeschlagenen Tests fuer demo_alpha_api"}'
+$r = Invoke-RestMethod -Method Post -Uri "http://localhost:5678/webhook/teamcity-ai-agent" -Headers $headers -ContentType "application/json" -Body '{"message":"Zeig mir die fehlgeschlagenen Tests fuer demo_alpha_api"}'
 $r.output
 $r.text
 ```
@@ -664,13 +713,13 @@ $r.text
 Print complete JSON in terminal:
 
 ```powershell
-Invoke-RestMethod -Method Post -Uri "http://localhost:5678/webhook/teamcity-ai-agent" -ContentType "application/json" -Body '{"message":"Zeig mir die fehlgeschlagenen Tests fuer demo_alpha_api"}' | ConvertTo-Json -Depth 10
+Invoke-RestMethod -Method Post -Uri "http://localhost:5678/webhook/teamcity-ai-agent" -Headers $headers -ContentType "application/json" -Body '{"message":"Zeig mir die fehlgeschlagenen Tests fuer demo_alpha_api"}' | ConvertTo-Json -Depth 10
 ```
 
 Write full output to file:
 
 ```powershell
-$r = Invoke-RestMethod -Method Post -Uri "http://localhost:5678/webhook/teamcity-ai-agent" -ContentType "application/json" -Body '{"message":"Zeig mir die fehlgeschlagenen Tests fuer demo_alpha_api"}'
+$r = Invoke-RestMethod -Method Post -Uri "http://localhost:5678/webhook/teamcity-ai-agent" -Headers $headers -ContentType "application/json" -Body '{"message":"Zeig mir die fehlgeschlagenen Tests fuer demo_alpha_api"}'
 $r.output | Out-File -FilePath "$env:TEMP\n8n-webhook-response.txt" -Encoding utf8
 notepad "$env:TEMP\n8n-webhook-response.txt"
 ```
