@@ -539,6 +539,16 @@ Behavior:
 - Chat UI usage continues unchanged.
 - Webhook calls receive an HTTP JSON response from `Respond to Webhook`.
 
+Examples:
+
+<p align="center">
+  <img src="docs/screenshots/teamcity-n8n-ollama-example.png" alt="TeamCity n8n Ollama Example" width="100%">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/teamcity-n8n-ollama-example1.png" alt="TeamCity n8n Ollama Example 1" width="100%">
+</p>
+
 ### 2.8.1 Endpoint and Port Mapping
 
 Configured webhook path in the AI Agent workflow:
