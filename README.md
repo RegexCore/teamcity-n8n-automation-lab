@@ -34,10 +34,13 @@ Local Docker Compose lab for TeamCity (REST + MCP test flows), n8n (UI + chat/we
   - [2.6 Commands](#26-commands)
   - [2.7 Troubleshooting](#27-troubleshooting)
   - [2.8 Custom Chat via Webhook API (Implemented)](#28-custom-chat-via-webhook-api-implemented)
+    - [2.8.6 Authentication Variants (.env Token and Credentials)](#286-authentication-variants-env-token-and-credentials)
+    - [2.8.7 JSON Examples (With and Without Token Check)](#287-json-examples-with-and-without-token-check)
 - [3. Ollama](#3-ollama)
   - [3.1 Scope](#31-scope)
   - [3.2 Architecture](#32-architecture)
   - [3.3 Configuration](#33-configuration)
+  - [3.3.2 Ollama in n8n via Credentials (without .env)](#332-ollama-in-n8n-via-credentials-without-env)
   - [3.3.1 LLM Request Parameters](#331-llm-request-parameters)
   - [3.4 First Start](#34-first-start)
   - [3.5 Persistence](#35-persistence)
@@ -600,6 +603,36 @@ Example response:
 }
 ```
 
+Webhook input normalization (Code node before AI Agent):
+
+```javascript
+const src = $input.first()?.json ?? {};
+const body = src.body && typeof src.body === 'object' ? src.body : src;
+const chatInput = (body.message ?? body.input ?? body.chatInput ?? body.text ?? '').toString().trim();
+
+if (!chatInput) {
+  throw new Error('Webhook payload requires one of: message, input, chatInput, text');
+}
+
+const providedSessionId = (body.conversationId ?? body.sessionId ?? body.userId ?? '').toString().trim();
+const sessionId = providedSessionId || `webhook-${Date.now()}`;
+
+return [{
+  json: {
+    chatInput,
+    sessionId,
+    webhookPayload: body
+  }
+}];
+```
+
+Behavior of this snippet:
+
+- accepts `message`, `input`, `chatInput`, or `text`
+- rejects empty input early with a clear error
+- uses `conversationId`, `sessionId`, or `userId` as session key
+- creates fallback session id when no id was provided
+
 ### 2.8.3 Test Commands (Terminal)
 
 Both URLs at a glance:
@@ -744,6 +777,148 @@ docker compose restart n8n
 - secure webhook endpoint (token/JWT/reverse proxy), do not expose openly
 - keep `N8N_WEBHOOK_URL` aligned with externally reachable URL
 
+### 2.8.6 Authentication Variants (.env Token and Credentials)
+
+Both variants are supported in this lab.
+
+Use Variant A if you want to keep the current `.env`-based setup.
+Use Variant B if you want token management via n8n Credentials UI.
+
+Variant A: keep `.env` token check (existing behavior)
+
+Goal:
+
+- keep current workflow logic unchanged
+- token remains managed via `.env`
+
+How it works:
+
+1. Set `N8N_WEBHOOK_TOKEN` in `.env`.
+2. Keep manual token validation in workflow logic (for example in a Code node).
+3. Send token in request header:
+  - `X-Webhook-Token: <N8N_WEBHOOK_TOKEN>`
+  - or `Authorization: Bearer <N8N_WEBHOOK_TOKEN>`
+
+Notes:
+
+- after changing `.env` token values, recreate/restart n8n so runtime env is updated
+- this is simple and fully valid for local/lab usage
+
+Variant B: token in n8n Credentials (Header Auth)
+
+Goal:
+
+- central secret handling in n8n UI
+- easier token rotation without editing workflow code
+
+Incoming webhook auth via credential:
+
+1. Open the `Webhook` node.
+2. Set `Authentication` to `Header Auth`.
+3. Create/select a `Header Auth` credential.
+4. In credential set:
+  - `Name`: `X-Webhook-Token`
+  - `Value`: your shared webhook token
+5. Save credential and activate workflow.
+6. Call webhook with header `X-Webhook-Token: <token>`.
+
+Alternative header for incoming webhook:
+
+- set `Name` to `Authorization`
+- set `Value` to `Bearer <token>`
+
+TeamCity API token via credential:
+
+1. Open a TeamCity `HTTP Request` node.
+2. In `Authentication`, select `Header Auth`.
+3. Create/select credential and set:
+  - `Name`: `Authorization`
+  - `Value`: `Bearer <TEAMCITY_TOKEN>`
+4. Reuse this credential in all TeamCity request nodes.
+
+Important:
+
+- use either Variant A or Variant B for webhook auth in the same flow
+- avoid running both checks in parallel to prevent duplicate/contradicting auth behavior
+
+Where to store values in n8n UI (Personal project):
+
+- if you do not use `.env` for a token/URL, store it in n8n under `Personal -> Credentials`
+- use `Personal -> Variables` for non-secret reusable values (for example base URLs or defaults)
+- in your current local setup these pages are:
+  - Workflows: `http://localhost:5678/projects/3nuxCpe6E1rTbVSO/workflows`
+  - Credentials: `http://localhost:5678/projects/3nuxCpe6E1rTbVSO/credentials`
+  - Variables: `http://localhost:5678/projects/3nuxCpe6E1rTbVSO/variables`
+
+### 2.8.7 JSON Examples (With and Without Token Check)
+
+These examples show the n8n Code node return payload and behavior for both auth variants.
+
+Variant A (`.env` token check in workflow logic):
+
+```javascript
+const src = $input.first()?.json ?? {};
+const body = src.body && typeof src.body === 'object' ? src.body : src;
+
+const headerToken = (
+  body.token ??
+  src.headers?.['x-webhook-token'] ??
+  src.headers?.['X-Webhook-Token'] ??
+  (src.headers?.authorization || src.headers?.Authorization || '').replace(/^Bearer\s+/i, '') ??
+  ''
+).toString().trim();
+
+const expectedToken = ($env.N8N_WEBHOOK_TOKEN ?? '').toString().trim();
+
+if (!expectedToken) {
+  throw new Error('N8N_WEBHOOK_TOKEN is not set');
+}
+
+if (!headerToken || headerToken !== expectedToken) {
+  throw new Error('Unauthorized: invalid or missing webhook token');
+}
+
+const chatInput = (body.message ?? body.input ?? body.chatInput ?? body.text ?? '').toString().trim();
+
+if (!chatInput) {
+  throw new Error('Webhook payload requires one of: message, input, chatInput, text');
+}
+
+const providedSessionId = (body.conversationId ?? body.sessionId ?? body.userId ?? '').toString().trim();
+const sessionId = providedSessionId || `webhook-${Date.now()}`;
+
+return [{
+  json: {
+    chatInput,
+    sessionId,
+    webhookPayload: body
+  }
+}];
+```
+
+Variant B (token handled by n8n `Webhook` credential, no manual token check in Code node):
+
+```javascript
+const src = $input.first()?.json ?? {};
+const body = src.body && typeof src.body === 'object' ? src.body : src;
+const chatInput = (body.message ?? body.input ?? body.chatInput ?? body.text ?? '').toString().trim();
+
+if (!chatInput) {
+  throw new Error('Webhook payload requires one of: message, input, chatInput, text');
+}
+
+const providedSessionId = (body.conversationId ?? body.sessionId ?? body.userId ?? '').toString().trim();
+const sessionId = providedSessionId || `webhook-${Date.now()}`;
+
+return [{
+  json: {
+    chatInput,
+    sessionId,
+    webhookPayload: body
+  }
+}];
+```
+
 ## 3. Ollama
 
 ## 3.1 Scope
@@ -804,6 +979,21 @@ Meaning:
 - `OLLAMA_GPU_REQUEST`: Docker GPU request passed to compose (`all` enables GPU request)
 - `OLLAMA_GPU_DEVICES`: NVIDIA visible devices inside container (`all` or `none` for CPU-only)
 - `OLLAMA_GPU_CAPABILITIES`: requested NVIDIA driver capabilities
+
+### 3.3.2 Ollama in n8n via Credentials (without `.env`)
+
+If you add the Ollama tool/node in n8n and do not want to read URL/model from `.env`:
+
+1. Open `Personal -> Credentials`.
+2. Create an `Ollama` credential (or HTTP credential used by your node type).
+3. Set Base URL to internal Docker URL: `http://ollama:11434`.
+4. In the node/tool select this credential and set model (for example `qwen3:8b`).
+
+Notes:
+
+- for requests from host terminal use host URL `http://localhost:11434`
+- for requests from n8n container/workflow use internal URL `http://ollama:11434`
+- when Credentials are used, URL/token should not be duplicated in `.env`-driven node logic
 
 ## 3.3.1 LLM Request Parameters
 
